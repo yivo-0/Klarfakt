@@ -104,7 +104,7 @@ jobs:
           java-version: '17'
 
       - name: Cache the reference validator and its configuration
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .tmp/reference
           key: reference-${{ hashFiles('src/Klarfakt/RulePacks.json', 'tools/reference-diff.py') }}
