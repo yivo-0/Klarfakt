@@ -11,6 +11,7 @@ repository_url: https://github.com/yivo-0/Klarfakt
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
+  - jekyll-sitemap
 
 permalink: /:year/:month/:title/
 
