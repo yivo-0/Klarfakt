@@ -16,9 +16,9 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
             8.0.x
@@ -72,7 +72,7 @@ jobs:
 
       - name: Publish corpus reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: corpus-reports
           # One set per target framework: the two runs used to collide writing a single path.
@@ -90,21 +90,21 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
             8.0.x
             10.0.x
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Cache the reference validator and its configuration
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .tmp/reference
           key: reference-${{ hashFiles('src/Klarfakt/RulePacks.json', 'tools/reference-diff.py') }}
@@ -123,7 +123,7 @@ jobs:
 
       - name: Publish the comparison
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reference-diff
           path: corpus/reference-diff.md
