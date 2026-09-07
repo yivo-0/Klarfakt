@@ -128,6 +128,49 @@ public class BatchTests : IDisposable
         Assert.Contains("\"he said \"\"no\"\"\"", writer.ToString());
     }
 
+    [Theory]
+    [InlineData("=cmd|'/c calc'!A1")]
+    [InlineData("+1+1")]
+    [InlineData("-2+3")]
+    [InlineData("@SUM(A1:A9)")]
+    public void Refuses_to_hand_a_spreadsheet_a_formula_from_an_invoice(string identifier)
+    {
+        var reports = new List<Report> { Report("a.xml", "valid", "En16931", profile: identifier) };
+
+        using var writer = new StringWriter();
+        Batch.WriteCsv(writer, reports);
+        var row = writer.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)[1];
+
+        Assert.Contains($"\"\t{identifier}\"", row);
+        Assert.DoesNotContain($",{identifier[0]}", row);
+    }
+
+    [Fact]
+    public void Leaves_an_ordinary_identifier_alone()
+    {
+        var reports = new List<Report> { Report("a.xml", "valid", "En16931", profile: "urn:cen.eu:en16931:2017") };
+
+        using var writer = new StringWriter();
+        Batch.WriteCsv(writer, reports);
+
+        Assert.Contains("a.xml,valid,En16931,urn:cen.eu:en16931:2017,", writer.ToString());
+    }
+
+    [Fact]
+    public void Quotes_a_carriage_return_so_the_row_cannot_split()
+    {
+        // XML normalises a literal CR in content, but &#13; survives the parser and Trim only
+        // reaches the ends — so this arrives in the middle of an identifier.
+        var reports = new List<Report> { Report("a.xml", "valid", "En16931", profile: "urn:a\rurn:b") };
+
+        using var writer = new StringWriter();
+        Batch.WriteCsv(writer, reports);
+        var text = writer.ToString();
+
+        Assert.Contains("\"urn:a\rurn:b\"", text);
+        Assert.Equal(2, text.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Length);
+    }
+
     [Fact]
     public void Summarises_an_archive_by_the_rules_that_fail_most()
     {
