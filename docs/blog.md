@@ -1,12 +1,9 @@
 ---
 layout: default
 title: Writing
-description: Notes from building an EN 16931 validator in .NET.
+description: Notes from building an EN 16931 validator in .NET — mostly the things that were not written down anywhere obvious, and the mistakes that were mine.
 permalink: /blog/
 ---
-
-Long-form notes from building Klarfakt. Mostly the things that were not written down anywhere
-obvious, and the mistakes that were mine.
 
 <ul class="post-list">
 {% for post in site.posts %}

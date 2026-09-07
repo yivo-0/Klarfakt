@@ -3,12 +3,14 @@ description: >-
   Read and validate EN 16931 electronic invoices in .NET.
   No Java, no Node, nothing leaves your server.
 url: https://klarfakt.dev
+author: Oleh Yanytskyi
+repository_url: https://github.com/yivo-0/Klarfakt
 
-theme: jekyll-theme-cayman
-show_downloads: false
-
+# No theme. The layouts and stylesheet in this folder are the whole site, so the pages carry no
+# host branding and load no fonts from anyone else's server.
 plugins:
   - jekyll-feed
+  - jekyll-seo-tag
 
 permalink: /:year/:month/:title/
 

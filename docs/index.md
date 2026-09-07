@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Klarfakt
+heading: EN 16931 e-invoice validation for .NET
 description: Read and validate EN 16931 electronic invoices in .NET. No Java, no Node, nothing leaves your server.
 permalink: /
 ---
