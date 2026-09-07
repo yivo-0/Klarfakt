@@ -1,0 +1,29 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+.post-meta {
+  color: #6a737d;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.post-list {
+  list-style: none;
+  padding: 0;
+
+  li {
+    border-top: 1px solid #eff0f1;
+    padding-top: 1.2rem;
+    margin-bottom: 1.8rem;
+  }
+
+  h3 {
+    margin: 0 0 0.4rem;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+}

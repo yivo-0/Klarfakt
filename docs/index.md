@@ -1,6 +1,8 @@
 ---
+layout: default
 title: Klarfakt
 description: Read and validate EN 16931 electronic invoices in .NET. No Java, no Node, nothing leaves your server.
+permalink: /
 ---
 
 Since January 2025 every company in Germany must be able to receive an electronic invoice. If your
@@ -56,18 +58,18 @@ bake the artefacts into the image so the container runs with no network at all.
 
 ## Writing
 
-- [Four hundred bytes](four-hundred-bytes) — a 424-byte PDF that terminates a .NET process, why a
-  `catch` cannot help, and the compression bomb next to it.
-- [Validating European e-invoices in .NET, without a JVM](en16931-without-java) — why
-  `XslCompiledTransform` cannot run the artefacts, what changed in May 2026, and four implementation
-  details that are not written down anywhere obvious.
+{% for post in site.posts limit: 3 %}
+- [{{ post.title }}]({{ post.url | relative_url }}) — {{ post.description }}
+{% endfor %}
+
+[All writing]({{ '/blog/' | relative_url }}) · [Atom feed]({{ '/feed.xml' | relative_url }})
 
 ## Licence
 
 **Free unless your organisation turns over more than €1,000,000 a year.** Free at any size inside
 OSI-licensed open source. Free always for evaluation, development, CI and internal testing.
 
-Above that threshold and in production, a commercial licence is **€690 a year** — [pricing](pricing).
+Above that threshold and in production, a commercial licence is **€690 a year** — [pricing]({{ '/pricing/' | relative_url }}).
 Every version becomes Apache 2.0 four years after it ships, so there is no lock-in if the project
 stops being maintained.
 

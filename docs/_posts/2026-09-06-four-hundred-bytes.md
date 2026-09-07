@@ -1,6 +1,8 @@
 ---
+layout: post
 title: "Four hundred bytes"
 description: "A 424-byte PDF that terminates a .NET process, why a catch cannot help, and the compression bomb next to it."
+date: 2026-09-06
 ---
 
 This file is 424 bytes. It kills a .NET process.

@@ -1,0 +1,17 @@
+---
+layout: default
+---
+
+<p class="post-meta">
+  <time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%-d %B %Y" }}</time>
+</p>
+
+{{ content }}
+
+<hr>
+
+<p class="post-meta">
+  <a href="{{ '/blog/' | relative_url }}">All writing</a> ·
+  <a href="{{ '/feed.xml' | relative_url }}">Feed</a> ·
+  <a href="{{ '/' | relative_url }}">Klarfakt</a>
+</p>
