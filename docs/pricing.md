@@ -1,6 +1,8 @@
 ---
+layout: default
 title: "Pricing"
 description: "What a commercial Klarfakt licence costs, what it covers, and the rule pack update commitment."
+permalink: /pricing/
 ---
 
 Most people reading this owe nothing. **Klarfakt is free unless your organisation
