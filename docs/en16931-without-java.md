@@ -1,4 +1,7 @@
-# Validating European e-invoices in .NET, without a JVM
+---
+title: "Validating European e-invoices in .NET, without a JVM"
+description: "Why XslCompiledTransform cannot run the EN 16931 artefacts, what SaxonCS-HE 13 changed, and four things that cost an afternoon."
+---
 
 Since 1 January 2025, every company in Germany must be able to receive an
 electronic invoice. Not send one — that comes later, in stages — but receive one,
