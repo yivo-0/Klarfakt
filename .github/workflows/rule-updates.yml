@@ -20,7 +20,7 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check pinned rule packs against upstream
         run: python tools/check-rule-updates.py --issue
