@@ -2,6 +2,11 @@ name: release
 
 # Publishing is driven by an annotated tag on main: git tag -a v1.0.0 -m "..." && git push origin v1.0.0
 # A NuGet version can never be replaced or deleted, only unlisted, so the full suite runs first.
+#
+# Authentication is Trusted Publishing, not an API key. nuget.org holds a policy naming this
+# repository and this workflow file, so renaming release.yml breaks publishing until the policy is
+# updated to match. The only secret is NUGET_USER, which is a nuget.org profile name, not a
+# credential.
 on:
   push:
     tags: ['v*']
@@ -11,6 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Lets this job ask GitHub for an OIDC token. It grants nothing on nuget.org by itself:
+      # nuget.org decides whether to accept the identity by matching it against the trusted
+      # publishing policy, so there is no long-lived key here to leak or to remember to rotate.
+      id-token: write
 
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -44,10 +53,19 @@ jobs:
       - name: Pack
         run: dotnet pack --configuration Release --no-build -p:Version=$VERSION --output artifacts
 
+      # Trade the OIDC token for an API key valid for one hour. Requested here rather than at the
+      # top of the job because the build, restore and test steps above take minutes, and a key
+      # fetched too early expires before the push.
+      - name: Exchange the workflow identity for a short-lived key
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Publish to NuGet
         run: >
           dotnet nuget push "artifacts/*.nupkg"
-          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
 
