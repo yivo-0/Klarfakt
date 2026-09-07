@@ -61,7 +61,7 @@ after Microsoft ends support for it, announced one minor version in advance.
 
 ## Buying
 
-Email **oleganickij02@gmail.com** with the organisation name and the tier. Back
+Email **licensing@klarfakt.dev** with the organisation name and the tier. Back
 comes an invoice and a licence certificate naming the organisation. No sales call,
 no procurement portal, no per-seat audit.
 

@@ -231,7 +231,7 @@ lock-in if the project stops being maintained. The terms are
 [Business Source License 1.1](LICENSE), which is not an OSI-approved licence; the grant above is
 what actually governs most users.
 
-For a commercial licence, or if you are unsure which applies to you, email oleganickij02@gmail.com.
+For a commercial licence, or if you are unsure which applies to you, email licensing@klarfakt.dev.
 
 Third-party components and the licences of the validation artefacts are listed in [NOTICE](NOTICE).
 Klarfakt depends on [SaxonCS-HE](https://www.nuget.org/packages/SaxonCS-HE) (Saxonica, MPL-2.0) for

@@ -69,4 +69,4 @@ developers, deployments and validations, covering every version released during 
 permanently. Every version becomes Apache 2.0 four years after it ships — 1.x on 2030-09-04. Terms
 are Business Source License 1.1, which is not an OSI-approved licence.
 
-[Documentation, samples and source](https://github.com/yivo-0/Klarfakt) · oleganickij02@gmail.com
+[Documentation, samples and source](https://github.com/yivo-0/Klarfakt) · licensing@klarfakt.dev

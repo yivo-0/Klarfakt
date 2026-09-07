@@ -4,7 +4,7 @@ contact_links:
     url: https://github.com/yivo-0/Klarfakt/security/advisories/new
     about: Anything a hostile document could trigger. Please do not open a public issue.
   - name: Commercial licence
-    url: mailto:oleganickij02@gmail.com
+    url: mailto:licensing@klarfakt.dev
     about: Licensing above the revenue threshold, or a question about which terms apply to you.
   - name: A rule you disagree with
     url: https://github.com/ConnectingEurope/eInvoicing-EN16931/issues
