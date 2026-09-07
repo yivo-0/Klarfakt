@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en' }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% seo %}
+    {% feed_meta %}
+    <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+    <link rel="icon" href="{{ '/favicon.svg' | relative_url }}" type="image/svg+xml">
+    <link rel="alternate icon" href="{{ '/icon.png' | relative_url }}" type="image/png">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to the content</a>
+
+    <header class="masthead">
+      <div class="masthead-inner">
+        <a class="wordmark" href="{{ '/' | relative_url }}">
+          <svg class="wordmark-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4 12.5 9.5 18 20 6" fill="none" stroke="currentColor" stroke-width="3.2"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Klarfakt
+        </a>
+        <nav aria-label="Sections">
+          <a href="{{ '/blog/' | relative_url }}">Writing</a>
+          <a href="{{ '/pricing/' | relative_url }}">Pricing</a>
+          <a href="{{ site.repository_url }}">Source</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+      <h1 class="page-title">{{ page.heading | default: page.title }}</h1>
+
+      {% if page.description and page.layout != 'post' %}
+        <p class="lede">{{ page.description }}</p>
+      {% endif %}
+
+      {{ content }}
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <p>Klarfakt is built and maintained by {{ site.author }}.</p>
+        <p>
+          Free under €1,000,000 turnover ·
+          <a href="{{ '/pricing/' | relative_url }}">commercial terms</a> ·
+          <a href="mailto:hello@klarfakt.dev">hello@klarfakt.dev</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

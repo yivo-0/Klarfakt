@@ -9,3 +9,4 @@ rules/
 *.local.md
 artifacts/
 __pycache__/
+docs/_site/

@@ -9,7 +9,8 @@ Most people reading this owe nothing. **Klarfakt is free unless your organisatio
 turns over more than €1,000,000 a year**, free at any size inside OSI-licensed
 open source, and free always for evaluation, development, CI and internal testing.
 
-If that covers you, stop here and go back to the [README](../README.md).
+If that covers you, stop here and go back to the
+[README](https://github.com/yivo-0/Klarfakt#readme).
 
 ## Commercial licence
 
@@ -76,7 +77,8 @@ production? Ask. A straight answer costs one email.
 ## If the project stops
 
 **Every version of Klarfakt becomes Apache 2.0 four years after it is
-published.** The [licence](../LICENSE) sets that as a ceiling and it cannot be
+published.** The [licence](https://github.com/yivo-0/Klarfakt/blob/main/LICENSE)
+sets that as a ceiling and it cannot be
 extended or revoked — version 1.x converts on 2030-09-04, and later versions
 carry their own dates.
 

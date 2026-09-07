@@ -1,10 +1,15 @@
 version: 2
 
+# Changes land on dev and reach main through a release pull request. Without target-branch,
+# Dependabot opens against the default branch instead, which skips that gate and leaves main
+# ahead of dev after every merge. This file is read from the default branch, so the setting only
+# takes effect once it is on main.
 updates:
   # Two of the package references exist only to pin transitive dependencies of PDFsharp away from
   # published advisories. Dependabot is what notices when those pins can move or need to.
   - package-ecosystem: nuget
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -16,5 +21,6 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
       interval: monthly
