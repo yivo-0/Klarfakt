@@ -56,8 +56,12 @@ def download(url, destination):
 
     os.makedirs(os.path.dirname(destination), exist_ok=True)
     print(f"  downloading {url}")
-    with urllib.request.urlopen(url) as response, open(destination, "wb") as handle:
+    # Write alongside and rename: a transfer cut halfway would otherwise leave a truncated file
+    # that the check above treats as a finished download, and CI caches this directory.
+    partial = destination + ".part"
+    with urllib.request.urlopen(url) as response, open(partial, "wb") as handle:
         shutil.copyfileobj(response, handle)
+    os.replace(partial, destination)
 
     return destination
 

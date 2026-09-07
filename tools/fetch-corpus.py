@@ -8,9 +8,15 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.request
 
 TARGET = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "corpus")
+
+# raw.githubusercontent.com resets connections when the test and reference jobs fetch the corpus at
+# the same time. A reset file used to be printed and skipped, leaving a corpus that is quietly
+# smaller than the one the run reports against.
+ATTEMPTS = 5
 
 # A corpus entry may pin a git ref. The XRechnung testsuite is pinned to the release that matches
 # the rule pack in tools/fetch-rules.py — mismatched versions produce phantom disagreements.
@@ -52,6 +58,17 @@ def tree(repo, ref):
     return resolved, paths
 
 
+def download(url):
+    for attempt in range(ATTEMPTS):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as response:
+                return response.read()
+        except Exception as error:
+            if attempt == ATTEMPTS - 1:
+                raise RuntimeError(f"{url} after {ATTEMPTS} attempts: {error}") from error
+            time.sleep(2 ** attempt)
+
+
 def wanted(path, prefixes, extensions):
     lowered = path.lower()
     if not lowered.endswith(extensions):
@@ -78,12 +95,7 @@ def main():
                 written += 1
                 continue
             url = f"https://raw.githubusercontent.com/{repo}/{branch}/" + urllib.parse.quote(path)
-            try:
-                with urllib.request.urlopen(url, timeout=30) as response:
-                    data = response.read()
-            except Exception as error:
-                print(f"  skip {path}: {error}")
-                continue
+            data = download(url)
             with open(destination, "wb") as handle:
                 handle.write(data)
             written += 1
@@ -94,4 +106,7 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except RuntimeError as error:
+        sys.exit(f"corpus incomplete, refusing to leave a partial one behind: {error}")
