@@ -26,6 +26,10 @@ library itself is unchanged.
   per-attachment cap bounded nothing on its own.
 - Cancelling a batch reported the exit code of the files that finished. It now
   exits 130 and states how many files were never checked.
+- `RestoreAsync` made one attempt per release asset, so a single 504 from GitHub
+  ended the restore. It retries a transient answer four times, backing off 1s, 2s
+  and 4s, and still fails immediately on a 404 — a pinned tag that is gone is not
+  going to appear.
 
 ## 1.0.0-preview.1
 

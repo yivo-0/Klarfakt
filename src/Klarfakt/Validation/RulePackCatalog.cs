@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -74,6 +75,12 @@ public sealed class RulePackCatalog
 {
     private const string ManifestResource = "Klarfakt.RulePacks.json";
     private const string RestoreHint = "Run 'klarfakt rules restore', or call RulePackCatalog.RestoreAsync().";
+
+    /// <summary>
+    /// Restoring is the first thing a caller does, often behind a corporate proxy, and a single
+    /// transient answer from GitHub used to end it. Four attempts, backing off 1s, 2s and 4s.
+    /// </summary>
+    private const int DownloadAttempts = 4;
 
     private static readonly JsonSerializerOptions SerializerOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -348,22 +355,47 @@ public sealed class RulePackCatalog
     {
         var url = $"https://github.com/{pack.Repository}/releases/download/{pack.Tag}/{asset}";
 
-        try
+        for (var attempt = 1; ; attempt++)
         {
-            var response = await client.GetAsync(url, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            var last = attempt == DownloadAttempts;
 
-            var buffer = new MemoryStream();
-            await response.Content.CopyToAsync(buffer, cancellationToken);
-            buffer.Position = 0;
+            try
+            {
+                var response = await client.GetAsync(url, cancellationToken);
 
-            return new System.IO.Compression.ZipArchive(buffer, System.IO.Compression.ZipArchiveMode.Read);
-        }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
-        {
-            throw new RulePackException($"Could not download {url}: {exception.Message}", exception);
+                if (response.IsSuccessStatusCode)
+                {
+                    var buffer = new MemoryStream();
+                    await response.Content.CopyToAsync(buffer, cancellationToken);
+                    buffer.Position = 0;
+
+                    return new System.IO.Compression.ZipArchive(
+                        buffer, System.IO.Compression.ZipArchiveMode.Read);
+                }
+
+                if (last || !Transient(response.StatusCode))
+                {
+                    throw new RulePackException(
+                        $"Could not download {url}: {(int)response.StatusCode} {response.ReasonPhrase}.");
+                }
+            }
+            catch (Exception exception)
+                when (exception is HttpRequestException or TaskCanceledException or InvalidDataException
+                      && !cancellationToken.IsCancellationRequested)
+            {
+                if (last) throw new RulePackException($"Could not download {url}: {exception.Message}", exception);
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(1 << (attempt - 1)), cancellationToken);
         }
     }
+
+    /// <summary>
+    /// A release download answers 5xx when GitHub is under load and 429 when the CDN in front of it
+    /// throttles. A 404 means the pinned tag or asset is not there, which retrying cannot change.
+    /// </summary>
+    private static bool Transient(HttpStatusCode status) =>
+        status is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests || (int)status >= 500;
 
     private static bool Matches(string path, string sha256) =>
         File.Exists(path) &&
