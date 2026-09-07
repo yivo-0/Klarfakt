@@ -1,0 +1,12 @@
+title: Klarfakt
+description: >-
+  Read and validate EN 16931 electronic invoices in .NET.
+  No Java, no Node, nothing leaves your server.
+
+theme: jekyll-theme-cayman
+show_downloads: false
+
+# README.md is the index of the docs folder when browsing the repository on GitHub; index.md is
+# the landing page of the site. Serving both would put the same links on two URLs.
+exclude:
+  - README.md

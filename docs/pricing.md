@@ -1,4 +1,7 @@
-# Pricing
+---
+title: "Pricing"
+description: "What a commercial Klarfakt licence costs, what it covers, and the rule pack update commitment."
+---
 
 Most people reading this owe nothing. **Klarfakt is free unless your organisation
 turns over more than €1,000,000 a year**, free at any size inside OSI-licensed
