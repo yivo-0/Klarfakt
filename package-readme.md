@@ -5,7 +5,7 @@ dependencies, and nothing leaves your server.**
 
 Klarfakt runs the publishers' own compiled Schematron in-process: the same artefacts the German
 reference validator executes, fetched from their pinned upstream releases and checked against a
-recorded SHA-256. **100 of 100 comparable files agree rule for rule with KoSIT's validationtool** on
+recorded SHA-256. **97 of 97 comparable files agree rule for rule with KoSIT's validationtool** on
 every CI run.
 
 ```csharp
