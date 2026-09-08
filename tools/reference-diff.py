@@ -89,9 +89,45 @@ def java():
     for candidate in (os.environ.get("JAVA_HOME"), None):
         binary = os.path.join(candidate, "bin", "java") if candidate else shutil.which("java")
         if binary and (shutil.which(binary) or os.path.exists(binary) or os.path.exists(binary + ".exe")):
-            return binary
+            return check_version(binary)
 
     sys.exit("No java on PATH and JAVA_HOME is not set. The reference validator needs Java 11+.")
+
+
+def check_version(binary):
+    """
+    Refuses a Java too old to load the validator. Java 8 fails inside the class loader and writes
+    no reports, which is indistinguishable from "the reference matched no scenario" unless someone
+    looks — a green-looking run that compared nothing at all.
+    """
+    reported = subprocess.run([binary, "-version"], capture_output=True, text=True).stderr
+    version = re.search(r'version "(\d+)(?:\.(\d+))?', reported)
+    if version is None:
+        return binary
+
+    major = int(version.group(1))
+    if major == 1:
+        major = int(version.group(2) or 0)
+
+    if major < 11:
+        sys.exit(f"{binary} is Java {major}; the reference validator needs 11+. "
+                 "Set JAVA_HOME to a newer JDK.")
+
+    return binary
+
+
+def key(path):
+    """
+    A file's path relative to the repository root, which is what identifies it.
+
+    Basenames repeat across the corpora — BR-01.xml is both a CreditNote and an Invoice unit test,
+    and 04.01a-INVOICE_ubl.xml is an XRechnung extension case in one corpus and a plain Mustang
+    invoice in another. Keying by one compared eight of the 143 files against a different file's
+    verdict, and reported the result as agreement.
+    """
+    path = path.replace("\\", "/")
+    absolute = path if os.path.isabs(path) else os.path.join(ROOT, path)
+    return os.path.relpath(absolute, ROOT).replace("\\", "/")
 
 
 def reference_verdicts(files, reports, config):
@@ -103,43 +139,71 @@ def reference_verdicts(files, reports, config):
     # Cleared per run: reports are named after the input file, so leftovers from another corpus
     # would silently be read as this one's.
     shutil.rmtree(reports, ignore_errors=True)
-    os.makedirs(reports, exist_ok=True)
 
+    # One run per source directory. The validator names each report after its input file and writes
+    # them all into one folder, so two inputs sharing a basename overwrote each other on disk and
+    # the reference side simply lost a verdict. Within a directory the filesystem already
+    # guarantees names are unique, so grouping this way cannot collide.
+    groups = {}
+    for path in files:
+        groups.setdefault(os.path.dirname(path), []).append(path)
+
+    verdicts = {}
+    for index, directory in enumerate(sorted(groups)):
+        output = os.path.join(reports, str(index))
+        os.makedirs(output, exist_ok=True)
+        verdicts.update(run_reference(jar, config, output, directory, groups[directory]))
+
+    # A group that produced nothing is not an error — corpus/facturx is ZUGFeRD 1.x, which matches
+    # no scenario the reference ships, and the comparison already records those as not comparable.
+    # Producing nothing anywhere is the failure worth stopping for.
+    if not verdicts:
+        sys.exit("the reference validator judged none of the corpus")
+
+    return verdicts
+
+
+def run_reference(jar, config, output, directory, files):
     command = [java(), "-jar", jar,
                "-s", os.path.join(config, "scenarios.xml"),
                "-r", config,
-               "-o", reports] + files
+               "-o", output] + files
 
     # input="" rather than DEVNULL: the tool calls System.in.available() to detect piped input, and
     # on Windows that throws on a null device handle but is happy with an empty pipe.
     result = subprocess.run(command, input="", capture_output=True, text=True)
 
     # The exit code is the number of documents it rejected, which is a verdict and not an error.
-    # Producing no reports at all is the failure worth stopping for.
-    if not os.listdir(reports):
-        print(result.stdout[-2000:])
-        sys.exit(f"the reference validator wrote no reports (exit {result.returncode})")
+    if not os.listdir(output):
+        if "Exception" in result.stderr or "Error" in result.stderr:
+            print(result.stderr[-2000:])
+            sys.exit(f"the reference validator failed on {key(directory)} (exit {result.returncode})")
+
+        print(f"  {key(directory)}: the reference matched no scenario for these {len(files)} files")
+        return {}
 
     verdicts = {}
-    for name in os.listdir(reports):
+    for name in os.listdir(output):
         if not name.endswith(".xml"):
             continue
 
-        with open(os.path.join(reports, name), encoding="utf-8") as handle:
+        with open(os.path.join(output, name), encoding="utf-8") as handle:
             report = handle.read()
 
         source = REFERENCE.search(report)
         if source is None:
             continue
 
-        key = os.path.basename(source.group(1).replace("\\", "/"))
+        # Rebuilt from the directory this run was given rather than parsed out of the report: the
+        # basename is unambiguous within one directory, which is the whole reason for the grouping.
+        path = os.path.join(directory, os.path.basename(source.group(1).replace("\\", "/")))
 
         # No scenario matched means the reference declined to judge the file at all, which is not
         # the same as judging it clean. Left out so it is skipped rather than read as agreement.
         if "rep:scenarioMatched" not in report:
             continue
 
-        verdicts[key] = {
+        verdicts[key(path)] = {
             normalise(match.group("code"))
             for pattern in (MESSAGE, MESSAGE_REVERSED)
             for match in pattern.finditer(report)
@@ -167,7 +231,7 @@ def klarfakt_verdicts(corpora):
         sys.exit("klarfakt produced no output")
 
     return {
-        os.path.basename(report["File"].replace("\\", "/")): (
+        key(report["File"]): (
             report["Status"],
             {finding["RuleId"] for finding in report["Findings"] if finding["Severity"] == "Error"},
         )
@@ -207,7 +271,7 @@ def main():
     rows, disagreements, skipped = [], [], []
 
     for path in files:
-        name = os.path.basename(path)
+        name = key(path)
         theirs = reference.get(name)
         mine = ours.get(name)
 
