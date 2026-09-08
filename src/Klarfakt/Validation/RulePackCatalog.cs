@@ -286,13 +286,28 @@ public sealed class RulePackCatalog
     /// plain EN 16931 and anything appended to Peppol 3.0 still contains "3.0" — both of which used
     /// to report as fully covered while nothing here judged the part that was appended.
     /// </remarks>
-    public static bool Covers(InvoiceProfile profile)
+    public static bool Covers(InvoiceProfile profile, InvoiceSyntax syntax)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
         return profile.SpecificationIdentifier is { } identifier
-            && CoveredIdentifiers.Contains(identifier.Trim());
+            && CoveredIdentifiers.Contains(identifier.Trim())
+            && Supports(RuleSetFor(profile), syntax);
     }
+
+    /// <summary>
+    /// Whether artefacts are shipped for this rule set in this syntax. A Peppol CII invoice is a
+    /// registered Peppol document type, and the pinned KoSIT BIS configuration carries UBL
+    /// artefacts only — so the answer is no, and saying so is what stops
+    /// <see cref="Layers"/> being asked for something that does not exist.
+    /// </summary>
+    internal static bool Supports(RuleSet ruleSet, InvoiceSyntax syntax) => (ruleSet, syntax) switch
+    {
+        (RuleSet.En16931, InvoiceSyntax.Ubl or InvoiceSyntax.Cii) => true,
+        (RuleSet.PeppolBisBilling3, InvoiceSyntax.Ubl) => true,
+        (RuleSet.XRechnung, InvoiceSyntax.Ubl or InvoiceSyntax.Cii) => true,
+        _ => false,
+    };
 
     /// <summary>The schema a document of this shape is judged against, for labelling findings.</summary>
     internal static string SchemaName(InvoiceSyntax syntax, DocumentKind kind) => (syntax, kind) switch
@@ -321,8 +336,12 @@ public sealed class RulePackCatalog
                 ("xrechnung", ["EN16931-UBL-validation.xsl", "XRechnung-UBL-validation.xsl"]),
             (RuleSet.XRechnung, InvoiceSyntax.Cii) =>
                 ("xrechnung", ["EN16931-CII-validation.xsl", "XRechnung-CII-validation.xsl"]),
+            // Peppol BIS Billing 3.0 is not UBL-only as a specification — OpenPEPPOL publishes CII
+            // Schematron sources. What is UBL-only is the pinned KoSIT configuration Klarfakt runs,
+            // whose scenarios declare UBL Invoice and UBL CreditNote and nothing else.
             (RuleSet.PeppolBisBilling3, InvoiceSyntax.Cii) => throw new RulePackException(
-                "Peppol BIS Billing 3.0 is defined for UBL only; validate a CII invoice against EN 16931 or XRechnung."),
+                "The pinned Peppol BIS configuration ships UBL artefacts only, so a CII invoice has " +
+                "no Peppol rules here; validate it against EN 16931 or XRechnung."),
             _ => throw new RulePackException($"No rule pack for {ruleSet} in {syntax} syntax."),
         };
 
@@ -376,7 +395,7 @@ public sealed class RulePackCatalog
 
             try
             {
-                var response = await client.GetAsync(url, cancellationToken);
+                using var response = await client.GetAsync(url, cancellationToken);
 
                 if (response.IsSuccessStatusCode)
                 {

@@ -92,6 +92,11 @@ Email **licensing@klarfakt.dev** with the organisation name and the tier. Back
 comes an invoice and a licence certificate naming the organisation. No sales call,
 no procurement portal, no per-seat audit.
 
+The terms are written down and readable in ten minutes:
+[commercial licence agreement]({{ '/commercial-licence/' | relative_url }}).
+Worth reading clause 3 before choosing a tier — shipping Klarfakt inside a
+product you sell is the whole difference between Standard and Extended.
+
 Unsure whether the threshold applies, or whether a particular use counts as
 production? Ask. A straight answer costs one email.
 

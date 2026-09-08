@@ -108,6 +108,7 @@ public class CorpusValidationTests(ValidatorFixture fixture)
         var ruleIds = new SortedDictionary<string, int>();
         var detail = new List<string>();
         var engineFailures = new List<string>();
+        var unsupported = new List<string>();
 
         foreach (var source in Directory.EnumerateDirectories(Root).Select(Path.GetFileName).Order())
         {
@@ -122,8 +123,13 @@ public class CorpusValidationTests(ValidatorFixture fixture)
                 {
                     result = fixture.Validator!.Validate(document!);
                 }
-                catch (RulePackException)
+                // Not swallowed. Validate picking a rule set from the document and then finding no
+                // artefact for it is a defect, not a corpus quirk — a Peppol CII invoice did exactly
+                // that and took a whole batch run down with it, and this "continue" is why adding
+                // such a file to the corpus would still not have said anything.
+                catch (RulePackException exception)
                 {
+                    unsupported.Add($"- `{source}/{Path.GetFileName(file)}`: {exception.Message}");
                     continue;
                 }
                 catch (ValidationException)
@@ -170,6 +176,18 @@ public class CorpusValidationTests(ValidatorFixture fixture)
             report.AppendLine();
             engineFailures.ForEach(line => report.AppendLine(line));
         }
+
+        if (unsupported.Count > 0)
+        {
+            report.AppendLine();
+            report.AppendLine("## Files Validate chose a rule set for and then had no artefact for");
+            report.AppendLine();
+            unsupported.ForEach(line => report.AppendLine(line));
+        }
+
+        // Choosing a rule set from the document and then throwing because nothing implements it is
+        // a defect in the fallback, and it escapes Validate as an exception no caller expects.
+        Assert.True(unsupported.Count == 0, string.Join("\n", unsupported));
 
         if (detail.Count > 0)
         {

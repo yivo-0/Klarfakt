@@ -45,8 +45,21 @@ public sealed class InvoiceValidator
         ArgumentNullException.ThrowIfNull(document);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var selected = ruleSet ?? RulePackCatalog.RuleSetFor(document.Profile);
-        var profileCovered = RulePackCatalog.Covers(document.Profile);
+        var chosen = ruleSet ?? RulePackCatalog.RuleSetFor(document.Profile);
+
+        // A Peppol CII invoice is a registered Peppol document type, and the pinned BIS
+        // configuration carries UBL artefacts only. Choosing that rule set from the document and
+        // then asking for artefacts that do not exist threw out of Validate, and Parallel.ForEach
+        // turned it into an AggregateException that took a whole folder down with it. Falling back
+        // is the behaviour that already exists for any other profile with no rules of its own.
+        var selected = ruleSet is null && !RulePackCatalog.Supports(chosen, document.Syntax)
+            ? RuleSet.En16931
+            : chosen;
+
+        // Naming a rule set explicitly is a different matter: the caller has stated what this
+        // document should be judged against, and quietly judging it against something else would
+        // be worse than saying no.
+        var profileCovered = RulePackCatalog.Covers(document.Profile, document.Syntax);
         var pack = _catalog.Describe(selected, document.Syntax);
         var findings = new List<ValidationFinding>();
         var schemaValid = true;

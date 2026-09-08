@@ -188,6 +188,10 @@ public class ValidationTests(ValidatorFixture fixture)
         var exception = Assert.Throws<RulePackException>(
             () => fixture.Validator!.Validate(Fixture.Load("facturx-cii.xml"), RuleSet.PeppolBisBilling3));
 
-        Assert.Contains("UBL only", exception.Message);
+        // Peppol BIS Billing 3.0 is not UBL-only as a specification — OpenPEPPOL publishes CII
+        // Schematron. What is UBL-only is the configuration Klarfakt pins, and the message has to
+        // say which of the two it means.
+        Assert.Contains("pinned Peppol BIS configuration ships UBL artefacts only", exception.Message);
+        Assert.DoesNotContain("Peppol BIS Billing 3.0 is defined for UBL only", exception.Message);
     }
 }
