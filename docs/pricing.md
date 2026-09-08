@@ -24,12 +24,24 @@ where applicable.
 | Deployments | unlimited | unlimited |
 | Validations | unlimited | unlimited |
 | Rule pack updates | for the term | for the term |
-| Support | email, usually within two working days | one working day, Monday to Friday |
-| | | A named contact, and your issues looked at ahead of the backlog |
+| Support | email support from the maintainer | a named contact, and your issues looked at ahead of the backlog |
 | Suited to | using Klarfakt inside your own systems | shipping it inside a product you sell |
 
 **No metering, ever.** Validation happens in your process, on your hardware.
 Klarfakt cannot count your invoices and is not built to.
+
+### Support
+
+Email, and in practice you will usually hear back within a working day. That is
+what happens rather than a number in a contract: an hours-and-minutes commitment
+is worth having when there is a rota behind it, and a promise nobody can keep on
+a bad week is worth less than none.
+
+What is committed is in the section above — rule pack updates for the term, every
+version released during it kept permanently, and the Change Date that cannot be
+extended. Those hold whatever any given week looks like.
+
+Extended adds a named contact and puts your issues ahead of the backlog.
 
 ### What a licence keeps
 
@@ -38,8 +50,10 @@ today, stop renewing in a year, and you keep the right to run everything
 published in that year, in production, indefinitely. What lapses is new versions
 and support, not the software already in your pipeline.
 
-That matters more than usual here, because Klarfakt is maintained by one person.
 You should not have to bet an invoice pipeline on anyone's continued attention.
+What you licensed keeps working whatever happens next, and the Change Date is a
+ceiling that cannot be moved — not a promise that depends on this project still
+being here to keep it.
 
 ### Founding customers
 

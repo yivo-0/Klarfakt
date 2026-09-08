@@ -14,12 +14,12 @@ the same artefacts the German reference validator executes — fetched from thei
 releases and checked against a recorded SHA-256. Not a reimplementation of the rules, and not a copy
 vendored into a repository where it can drift.
 
-## 100 of 100
+## 97 of 97
 
 Every CI run puts 143 invoices through both Klarfakt and [KoSIT's validationtool][kosit], using the
 same scenario configuration release, and diffs the rule ids each reports.
 
-**100 of 100 comparable files agree rule for rule.** The other 43 are recorded with the reason they
+**97 of 97 comparable files agree rule for rule.** The other 46 are recorded with the reason they
 cannot be compared. A disagreement that is not written down fails the build.
 
 That is the claim worth checking, and [the script that proves it][diff] is in the repository.

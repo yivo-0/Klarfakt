@@ -181,7 +181,7 @@ rather than drifting with upstream. The live pass count is on the CI badge above
 - **The German reference validator, verdict for verdict.** Every CI run puts 143 invoices through
   both Klarfakt and [KoSIT's validationtool](https://github.com/itplr-kosit/validator) — the tool
   the publishers ship — using the same scenario configuration release, and diffs the rule ids each
-  reports. **100 of 100 comparable files agree rule for rule.** The other 43 are recorded with the
+  reports. **97 of 97 comparable files agree rule for rule.** The other 46 are recorded with the
   reason they cannot be compared, usually that the reference matched no scenario for them. A
   disagreement that is not written down fails the build. `python tools/reference-diff.py`, and
   `corpus/reference-diff.md` is published as a CI artifact.
