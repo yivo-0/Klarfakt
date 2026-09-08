@@ -11,14 +11,18 @@ recorded SHA-256. Not a reimplementation of the rules, and not a copy vendored i
 When a verdict here disagrees with KoSIT's, that is a bug in Klarfakt — and the CEN rule suite is
 replayed test by test to keep it that way.
 
-> **Not on NuGet yet** — `1.0.0-preview.1` is pending. Until then, clone and build:
->
-> ```bash
-> git clone https://github.com/yivo-0/Klarfakt && cd Klarfakt
-> dotnet build && dotnet run --project src/Klarfakt.Cli -- rules restore
-> ```
->
-> The `klarfakt` examples below then read as `dotnet run --project src/Klarfakt.Cli -- …`.
+```bash
+dotnet add package Klarfakt --version 1.0.0-preview.1
+dotnet tool install -g Klarfakt.Cli --version 1.0.0-preview.1
+klarfakt rules restore
+```
+
+[![Klarfakt](https://img.shields.io/nuget/v/Klarfakt?label=Klarfakt)](https://www.nuget.org/packages/Klarfakt)
+[![Klarfakt.Cli](https://img.shields.io/nuget/v/Klarfakt.Cli?label=Klarfakt.Cli)](https://www.nuget.org/packages/Klarfakt.Cli)
+
+`rules restore` downloads the validation artefacts from their publishers and checks each against the
+SHA-256 in the embedded manifest. It is the only thing here that touches the network, and it is run
+once.
 
 [**samples/Quickstart**](samples/Quickstart) is the whole thing end to end — restore, load, validate,
 read the findings — in fifty lines, plus a [Dockerfile](samples/Quickstart/Dockerfile) that bakes the

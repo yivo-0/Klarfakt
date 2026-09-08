@@ -33,6 +33,10 @@ That is the claim worth checking, and [the script that proves it][diff] is in th
 | **Render** | a self-contained HTML page from KoSIT's official XRechnung visualisation |
 | **Frameworks** | net8.0, net10.0 |
 
+```bash
+dotnet add package Klarfakt --version 1.0.0-preview.1
+```
+
 ```csharp
 var validator = new InvoiceValidator();
 var document = InvoiceDocument.Load("invoice.xml");   // or a Factur-X / ZUGFeRD PDF
