@@ -266,17 +266,29 @@ public sealed class RulePackCatalog
     /// URN — NLCIUS and every other national profile look exactly like plain EN 16931 to a check
     /// that only reads the kind, which is how they used to be reported as fully covered.
     /// </remarks>
+    /// <summary>
+    /// The identifiers the shipped packs implement, exactly as an invoice declares them. The
+    /// XRechnung extension is here because the artefact carries its BR-DEX rules; XRechnung 2.x,
+    /// Peppol 4.0 and the Factur-X levels are not, because it does not.
+    /// </summary>
+    private static readonly HashSet<string> CoveredIdentifiers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "urn:cen.eu:en16931:2017",
+        "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
+        "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0",
+        "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" +
+        "#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0",
+    };
+
     public static bool Covers(InvoiceProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        return profile.Kind switch
-        {
-            ProfileKind.XRechnung => profile.Version == XRechnungProfileVersion,
-            ProfileKind.PeppolBisBilling3 => profile.Version == PeppolProfileVersion,
-            ProfileKind.En16931 => profile.SpecificationIdentifier?.Contains('#') == false,
-            _ => false,
-        };
+        // The whole identifier, not a version found somewhere inside it. A document may append its
+        // own CIUS or extension to a supported one, and that suffix is exactly the part no pack
+        // here judges — reading the version out of the middle reported those as fully covered.
+        return profile.SpecificationIdentifier is { } identifier
+            && CoveredIdentifiers.Contains(identifier.Trim());
     }
 
     /// <summary>The schema a document of this shape is judged against, for labelling findings.</summary>

@@ -19,8 +19,8 @@ public class PdfAttachmentTests
     public void Refuses_two_different_files_under_one_name()
     {
         var pdf = Build(
-            ("factur-x.xml", Deflate(Bytes(Invoice)), true),
-            ("factur-x.xml", Deflate(Bytes(Other)), true));
+            ("factur-x.xml", Deflate(Bytes(Invoice)), true, null, false),
+            ("factur-x.xml", Deflate(Bytes(Other)), true, null, false));
 
         var exception = Assert.Throws<UnsupportedDocumentException>(
             () => InvoiceDocument.Load(new MemoryStream(pdf)));
@@ -34,8 +34,8 @@ public class PdfAttachmentTests
         // Producers do list one attachment in both the name tree and an annotation. Identical bytes
         // are not a conflict, and refusing them would lose readable invoices.
         var pdf = Build(
-            ("factur-x.xml", Deflate(Bytes(Invoice)), true),
-            ("factur-x.xml", Deflate(Bytes(Invoice)), true));
+            ("factur-x.xml", Deflate(Bytes(Invoice)), true, null, false),
+            ("factur-x.xml", Deflate(Bytes(Invoice)), true, null, false));
 
         var document = InvoiceDocument.Load(new MemoryStream(pdf));
 
@@ -45,7 +45,7 @@ public class PdfAttachmentTests
     [Fact]
     public void Blames_the_attachment_rather_than_the_document_for_broken_flate()
     {
-        var pdf = Build(("factur-x.xml", "this is not deflate data at all"u8.ToArray(), true));
+        var pdf = Build(("factur-x.xml", "this is not deflate data at all"u8.ToArray(), true, null, false));
 
         var exception = Assert.Throws<UnsupportedDocumentException>(
             () => InvoiceDocument.Load(new MemoryStream(pdf)));
@@ -61,7 +61,7 @@ public class PdfAttachmentTests
         // Some producers write bare deflate where the specification says zlib — /FlateDecode is
         // declared, the zlib header is absent. The fallback that handles them has to survive the
         // rewrite of the error path above.
-        var pdf = Build(("factur-x.xml", RawDeflate(Bytes(Invoice)), true));
+        var pdf = Build(("factur-x.xml", RawDeflate(Bytes(Invoice)), true, null, false));
 
         var document = InvoiceDocument.Load(new MemoryStream(pdf));
 
@@ -74,8 +74,8 @@ public class PdfAttachmentTests
         // Two 4 MB attachments against a 6 MB document total. The second cannot fit in what is
         // left, and the point is that it is refused during inflation rather than after.
         var pdf = Build(
-            ("factur-x.xml", Deflate(new byte[4 * 1024 * 1024]), true),
-            ("extra.xml", Deflate(new byte[4 * 1024 * 1024]), true));
+            ("factur-x.xml", Deflate(new byte[4 * 1024 * 1024]), true, null, false),
+            ("extra.xml", Deflate(new byte[4 * 1024 * 1024]), true, null, false));
 
         var exception = Assert.Throws<UnsupportedDocumentException>(() => InvoiceDocument.Load(
             new MemoryStream(pdf),
@@ -83,6 +83,60 @@ public class PdfAttachmentTests
 
         Assert.Contains("total attachment limit", exception.Message);
         Assert.Contains("MaxTotalAttachmentBytes", exception.Message);
+    }
+
+    [Fact]
+    public void Bounds_a_flate_stream_that_declares_a_no_op_predictor()
+    {
+        // /Predictor 1 is "no prediction", so these are ordinary Flate bytes. Treating the presence
+        // of /DecodeParms as exotic sent them down the unbounded path, which let the sender decide
+        // whether the limit applied: refusing afterwards still pays for the memory first.
+        var pdf = Build(("factur-x.xml", Deflate(new byte[64 * 1024 * 1024]), true, "<< /Predictor 1 >>", false));
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        Assert.Throws<UnsupportedDocumentException>(() => InvoiceDocument.Load(
+            new MemoryStream(pdf), new DocumentLimits { MaxAttachmentBytes = 1024 }));
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(allocated < 16 * 1024 * 1024,
+            $"refusing a 64 MB payload against a 1 KB limit allocated {allocated:N0} bytes");
+    }
+
+    [Fact]
+    public void Reads_a_single_element_filter_array()
+    {
+        // /Filter [/FlateDecode] is valid PDF and means exactly /Filter /FlateDecode. Reading it as
+        // a name threw, and the broad catch reported the whole document as unreadable.
+        var pdf = Build(("factur-x.xml", Deflate(Bytes(Invoice)), true, null, true));
+
+        var document = InvoiceDocument.Load(new MemoryStream(pdf));
+
+        Assert.Equal("factur-x.xml", document.EmbeddedFileName);
+    }
+
+    [Fact]
+    public void Refuses_a_filter_it_will_not_decode_rather_than_decoding_it_unbounded()
+    {
+        // A predictor Klarfakt does not implement. PDFsharp would expand the whole attachment
+        // before anything could measure it, and the sender writes the dictionary.
+        var pdf = Build(("factur-x.xml", Deflate(Bytes(Invoice)), true, "<< /Predictor 12 /Columns 4 >>", false));
+
+        var exception = Assert.Throws<UnsupportedDocumentException>(
+            () => InvoiceDocument.Load(new MemoryStream(pdf)));
+
+        Assert.Contains("factur-x.xml", exception.Message);
+        Assert.Contains("does not decode", exception.Message);
+    }
+
+    [Fact]
+    public void Reads_an_uncompressed_attachment()
+    {
+        // No filter at all: nothing to expand, so the bytes are bounded by the file on disk.
+        var pdf = Build(("factur-x.xml", Bytes(Invoice), false, null, false));
+
+        var document = InvoiceDocument.Load(new MemoryStream(pdf));
+
+        Assert.Equal("factur-x.xml", document.EmbeddedFileName);
     }
 
     private static byte[] Bytes(string xml) => Encoding.UTF8.GetBytes(xml);
@@ -110,7 +164,7 @@ public class PdfAttachmentTests
     /// stream for each attachment. <c>Flate</c> controls only the declared /Filter, so a test can
     /// declare compression the bytes do not have.
     /// </summary>
-    private static byte[] Build(params (string Name, byte[] Bytes, bool Flate)[] attachments)
+    private static byte[] Build(params (string Name, byte[] Bytes, bool Flate, string? DecodeParms, bool FilterArray)[] attachments)
     {
         var first = 5;
         var names = string.Join(" ", attachments.Select((a, i) => $"({a.Name}) {first + i * 2} 0 R"));
@@ -146,8 +200,10 @@ public class PdfAttachmentTests
             }
             else
             {
-                var (_, bytes, flate) = attachments[(index - first) / 2];
-                var filter = flate ? " /Filter /FlateDecode" : string.Empty;
+                var (_, bytes, flate, parms, asArray) = attachments[(index - first) / 2];
+                var name = asArray ? "[/FlateDecode]" : "/FlateDecode";
+                var filter = flate ? $" /Filter {name}" : string.Empty;
+                if (parms is not null) filter += $" /DecodeParms {parms}";
                 Append(pdf, $"<< /Type /EmbeddedFile{filter} /Length {bytes.Length} >>\nstream\n");
                 pdf.Write(bytes);
                 Append(pdf, "\nendstream");

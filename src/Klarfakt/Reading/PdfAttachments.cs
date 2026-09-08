@@ -235,7 +235,7 @@ internal static class PdfAttachments
 
         var bytes = IsPlainFlate(content)
             ? Inflate(stream.Value, fileName, limits, ceiling)
-            : stream.UnfilteredValue;
+            : Undecodable(content, fileName);
 
         if (bytes is not null && bytes.LongLength > limits.MaxAttachmentBytes)
         {
@@ -246,14 +246,58 @@ internal static class PdfAttachments
     }
 
     /// <summary>
-    /// Flate with no decode parameters, which is what every hybrid invoice in the corpus uses.
-    /// Anything else — a predictor, a filter chain, an unusual filter — goes through PDFsharp,
-    /// because guessing at it wrongly would lose a readable invoice to save memory.
+    /// Whether the stream is Flate and nothing else, which is what every hybrid invoice in the
+    /// corpus uses.
     /// </summary>
-    private static bool IsPlainFlate(PdfDictionary content) =>
-        content.Elements.GetName("/Filter") == "/FlateDecode" &&
-        !content.Elements.ContainsKey("/DecodeParms") &&
-        !content.Elements.ContainsKey("/DP");
+    /// <remarks>
+    /// /Filter may be a name or a one-element array — <c>[/FlateDecode]</c> means exactly
+    /// <c>/FlateDecode</c>, and reading it as a name threw, so an otherwise ordinary invoice was
+    /// rejected as unreadable. /DecodeParms may be absent, null, or a dictionary whose predictor is
+    /// 1, which is "no prediction" and therefore the same bytes. Treating any of those as exotic
+    /// used to move the attachment onto the unbounded path, and the sender writes the dictionary —
+    /// so <c>/DecodeParms &lt;&lt; /Predictor 1 &gt;&gt;</c> was all it took to choose whether the
+    /// size limit applied at all.
+    /// </remarks>
+    private static bool IsPlainFlate(PdfDictionary content)
+    {
+        if (Single(content.Elements["/Filter"]) is not PdfName { Value: "/FlateDecode" }) return false;
+
+        return Single(content.Elements["/DecodeParms"] ?? content.Elements["/DP"]) switch
+        {
+            null or PdfNull => true,
+            PdfDictionary parameters => parameters.Elements.GetInteger("/Predictor") <= 1,
+            _ => false,
+        };
+    }
+
+    /// <summary>
+    /// A stream Klarfakt will not decode itself. With no filter there is nothing to expand and the
+    /// bytes are already bounded by the file on disk. With one, PDFsharp would decompress the whole
+    /// attachment before anyone could measure it, and the sender chooses the filter — so decoding
+    /// it here would hand them the decision of whether the limit applies.
+    /// </summary>
+    private static byte[]? Undecodable(PdfDictionary content, string fileName)
+    {
+        if (Single(content.Elements["/Filter"]) is not { } filter) return content.Stream?.Value;
+
+        throw new UnsupportedDocumentException(
+            $"The attachment '{fileName}' is encoded with {Describe(filter)}, which Klarfakt does " +
+            "not decode. A hybrid invoice embeds its XML uncompressed or with plain FlateDecode.");
+    }
+
+    private static string Describe(PdfItem filter) =>
+        filter is PdfName name ? $"the filter {name.Value}" : "a chain of filters";
+
+    /// <summary>The item itself, or the only element of a one-element array, references resolved.</summary>
+    private static PdfItem? Single(PdfItem? item)
+    {
+        item = (item as PdfReference)?.Value ?? item;
+
+        if (item is not PdfArray array) return item;
+
+        var only = array.Elements.Count == 1 ? array.Elements[0] : null;
+        return (only as PdfReference)?.Value ?? only;
+    }
 
     private static byte[] Inflate(byte[] raw, string fileName, DocumentLimits limits, long ceiling)
     {
