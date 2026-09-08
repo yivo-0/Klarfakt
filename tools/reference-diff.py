@@ -35,13 +35,22 @@ VALIDATOR_JAR = "validator-1.6.3-standalone.jar"
 CACHE = os.path.join(ROOT, ".tmp", "reference")
 
 # Files the two are known to disagree about, and why. A disagreement not listed here fails the run.
-# Keyed by file name, valued by a reason that has to be written by a person who checked it.
+# Keyed by the path relative to this repository -- "corpus/mustang/ubl/04.01a-INVOICE_ubl.xml", not
+# the bare file name, because basenames repeat across the corpora. Valued by a reason that has to
+# be written by a person who checked it.
 EXPECTED: dict[str, str] = {}
 
 # A floor on how much has to be comparable for a run to mean anything, set from the corpora this
 # defaults to. Without it, anything that stopped Klarfakt reading files reported perfect agreement
 # about nothing at all and exited zero. Raise it when the corpora grow.
-MINIMUM_COMPARABLE = 90
+#
+# Set to what the default corpora actually produce, not to a round number below it: at 90 a run
+# that quietly lost seven comparable files still passed, which is most of the way back to the bug
+# this exists to catch.
+MINIMUM_COMPARABLE = 97
+
+# A Java stack trace, which is what a crash looks like however the exit code reads.
+CRASH = re.compile(r"Exception in thread|^\s+at [\w.$]+\(|Could not find or load main class", re.MULTILINE)
 
 MESSAGE = re.compile(
     r'<rep:message\b[^>]*?level="(?P<level>[^"]*)"[^>]*?code="(?P<code>[^"]*)"', re.DOTALL)
@@ -173,10 +182,15 @@ def run_reference(jar, config, output, directory, files):
     # on Windows that throws on a null device handle but is happy with an empty pipe.
     result = subprocess.run(command, input="", capture_output=True, text=True)
 
-    # The exit code is the number of documents it rejected, which is a verdict and not an error.
+    # The exit code is the number of documents it rejected, which is a verdict and not an error, so
+    # a crash has to be told from "no scenario matched" some other way. A JVM stack trace is the
+    # unambiguous signal; matching any line containing "Error" would abort the comparison over a
+    # benign log line, and looking only at stderr would read a crash logged to stdout as agreement
+    # about nothing.
     if not os.listdir(output):
-        if "Exception" in result.stderr or "Error" in result.stderr:
-            print(result.stderr[-2000:])
+        combined = result.stdout + result.stderr
+        if CRASH.search(combined):
+            print(combined[-2000:])
             sys.exit(f"the reference validator failed on {key(directory)} (exit {result.returncode})")
 
         print(f"  {key(directory)}: the reference matched no scenario for these {len(files)} files")
