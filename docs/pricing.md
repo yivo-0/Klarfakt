@@ -73,6 +73,13 @@ with a report of every corpus verdict that changed. Bumps are never silent —
 `tools/reference-diff.py` compares every verdict against KoSIT's own validator on
 each run and the build fails on a disagreement that has not been written down.
 
+Thirty days is a commitment about the routine releases. A new major profile —
+XRechnung 4.0 for the revised standard, when it appears — brings new syntax
+bindings and new schemas with it, and the reference validator has to support it
+before the comparison can stay green. That is a different class of work and it
+would be dishonest to price it as the same promise:
+[what the 2026 revision means for a licence]({{ '/en16931-2026/' | relative_url }}).
+
 ## Supported frameworks
 
 Every .NET version Microsoft still supports, plus the current LTS. Today that is
