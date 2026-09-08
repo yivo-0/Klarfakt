@@ -57,6 +57,12 @@ against the SHA-256 in the embedded manifest before it is written and again befo
 Nothing else in Klarfakt touches the network. Validation is entirely local, and a Docker build can
 bake the artefacts into the image so the container runs with no network at all.
 
+## The 2026 revision
+
+CEN revised EN 16931 in 2026, and the two editions run in parallel until 31 March 2029. No
+XRechnung, Peppol BIS or CEN artefact exists for the new model yet — the profiles are still CIUSes
+of the 2017 one. [What that means for a licence]({{ '/en16931-2026/' | relative_url }}).
+
 ## Writing
 
 {% for post in site.posts limit: 3 %}

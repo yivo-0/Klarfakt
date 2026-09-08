@@ -75,6 +75,16 @@ them. Written down because they say what the limits are actually worth.
 - `RestoreAsync` made one attempt per release asset, so a single 504 from GitHub
   ended the restore. Four attempts, backing off 1s, 2s and 4s; a 404 still fails
   at once, because a pinned tag that is gone will not appear.
+- The command line kept every option it did not read. A mistyped `--stict` went
+  into the flag set and the run reported exit 0 for an archive nothing had
+  validated strictly; `klarfakt info ./invoices --csv report.csv` parsed cleanly,
+  wrote no file and said nothing, because `info` never looks at `--csv`. Each
+  command accepts only what it reads now, and anything else exits 64.
+- `tools/reference-diff.py` compared both sides by file name, and basenames repeat
+  across the corpora. Eight of the 143 files were matched against a different
+  file's verdict, and the reference validator's own reports overwrote each other
+  on disk before the comparison started. The agreement held once corrected; the
+  count did not, and **97 of 97** is the number this release reports.
 - Cancelling a batch reported the exit code of the files that finished. It exits
   130 and says how many were never checked.
 
