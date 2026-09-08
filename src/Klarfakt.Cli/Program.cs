@@ -11,35 +11,27 @@ if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
 }
 
 var command = args[0];
-var paths = new List<string>();
-var flags = new HashSet<string>(StringComparer.Ordinal);
-var values = new Dictionary<string, string>(StringComparer.Ordinal);
+var parsed = CommandLine.Parse(args[1..]);
 
-// Options that take a value are consumed with their argument, otherwise "--rules xrechnung" would
-// treat "xrechnung" as a file to validate.
-string[] valueOptions = ["--rules", "--csv", "--out", "-o", "--lang", "--parallel"];
-
-for (var index = 1; index < args.Length; index++)
+// An option nobody recognises is a mistake worth stopping for. Keeping it meant a mistyped
+// --stict was silently dropped and the run reported exit 0 for an archive nothing had checked
+// strictly — which is exactly the answer a pipeline would go on to trust.
+if (parsed.Problem is { } problem)
 {
-    var argument = args[index];
-
-    if (!argument.StartsWith('-'))
-    {
-        paths.Add(argument);
-    }
-    else if (argument.IndexOf('=') is var equals && equals > 0)
-    {
-        values[argument[..equals]] = argument[(equals + 1)..];
-    }
-    else if (valueOptions.Contains(argument) && index + 1 < args.Length)
-    {
-        values[argument] = args[++index];
-    }
-    else
-    {
-        flags.Add(argument);
-    }
+    Error(problem);
+    Usage();
+    return ExitCode.Usage;
 }
+
+if (parsed.WantsHelp)
+{
+    Usage();
+    return ExitCode.Usage;
+}
+
+var paths = parsed.Paths;
+var flags = parsed.Flags;
+var values = parsed.Values;
 
 try
 {
