@@ -99,7 +99,26 @@ jobs:
       # package fails here rather than in someone else's first five minutes. Repeated from ci.yml
       # deliberately: this is the only check whose subject is the exact artefact being pushed.
       - name: Verify the package from a clean directory
-        run: python tools/verify-package.py
+        run: python tools/verify-package.py --version "$VERSION"
+
+      # The packages about to be pushed have to be the ones built from this tag. They were not
+      # once: verify-package.py packed into artifacts/ after deleting it, so the release pushed a
+      # hardcoded older version, --skip-duplicate swallowed it, and the run went green having
+      # published nothing at all.
+      - name: Check the artefacts carry the tagged version
+        run: |
+          shopt -s nullglob
+          packages=(artifacts/*.nupkg)
+
+          [ ${#packages[@]} -gt 0 ] || { echo "::error::No packages in artifacts/."; exit 1; }
+
+          for package in "${packages[@]}"; do
+            echo "  $package"
+            case "$package" in
+              *".$VERSION.nupkg") ;;
+              *) echo "::error::$package is not version $VERSION. Refusing to publish."; exit 1 ;;
+            esac
+          done
 
       # Trade the OIDC token for an API key valid for one hour. Requested here rather than at the
       # top of the job because the build, restore and test steps above take minutes, and a key
