@@ -33,11 +33,16 @@ def run(command, cwd, env=None, check=True):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--version", default="1.0.0-preview.1")
+    parser.add_argument("--version", default="1.0.0-verify")
     arguments = parser.parse_args()
 
-    artifacts = os.path.join(ROOT, "artifacts")
-    shutil.rmtree(artifacts, ignore_errors=True)
+    # Its own directory, never the repository's artifacts/. This used to pack into artifacts/ after
+    # deleting it, which in the release workflow threw away the packages that had just been built
+    # from the tag and replaced them with a hardcoded version. The push then skipped them as
+    # duplicates and the run reported success having published nothing.
+    workspace = tempfile.mkdtemp(prefix="klarfakt-package-")
+    artifacts = os.path.join(workspace, "artifacts")
+    os.makedirs(artifacts, exist_ok=True)
 
     print(f"packing {arguments.version}")
     run(["dotnet", "pack", "--configuration", "Release",
@@ -46,7 +51,6 @@ def main():
     packages = sorted(name for name in os.listdir(artifacts) if name.endswith(".nupkg"))
     print("  " + "\n  ".join(packages))
 
-    workspace = tempfile.mkdtemp(prefix="klarfakt-package-")
     sample = os.path.join(workspace, "Quickstart")
     shutil.copytree(SAMPLE, sample)
 
