@@ -4,18 +4,34 @@ using Klarfakt;
 using Klarfakt.Rendering;
 using Klarfakt.Validation;
 
-if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
+if (args.Length == 0)
 {
     Usage();
     return ExitCode.Usage;
 }
 
-var command = args[0];
-var parsed = CommandLine.Parse(args[1..]);
+// Asking for help is not a usage error, and the usage text itself documents 64 as one.
+if (args[0] is "-h" or "--help" or "help")
+{
+    Usage();
+    return ExitCode.Ok;
+}
 
-// An option nobody recognises is a mistake worth stopping for. Keeping it meant a mistyped
-// --stict was silently dropped and the run reported exit 0 for an archive nothing had checked
-// strictly — which is exactly the answer a pipeline would go on to trust.
+var command = args[0];
+
+// Before the options, so an unknown command is reported as one rather than as whichever of its
+// options happens to be wrong for a command that does not exist.
+if (!CommandLine.IsCommand(command))
+{
+    return Unknown(command);
+}
+
+var parsed = CommandLine.Parse(command, args[1..]);
+
+// An option this command does not read is a mistake worth stopping for. Keeping it meant a
+// mistyped --stict was dropped and a run reported exit 0 for an archive nothing had checked
+// strictly — and "info --csv report.csv" wrote no CSV and said nothing, because info never looks
+// at --csv. Both are the answer a pipeline goes on to trust.
 if (parsed.Problem is { } problem)
 {
     Error(problem);
@@ -26,7 +42,7 @@ if (parsed.Problem is { } problem)
 if (parsed.WantsHelp)
 {
     Usage();
-    return ExitCode.Usage;
+    return ExitCode.Ok;
 }
 
 var paths = parsed.Paths;
@@ -440,49 +456,7 @@ RuleSet? RuleSet() => values.TryGetValue("--rules", out var value)
     }
     : null;
 
-static void Usage()
-{
-    Console.WriteLine(
-        """
-        klarfakt — validate EN 16931 electronic invoices
-
-        Usage:
-          klarfakt rules restore [--force]
-          klarfakt rules verify
-          klarfakt validate <file|folder...> [options]
-          klarfakt render <file|folder...> [-o <file|folder>] [--lang de|en]
-          klarfakt info <file|folder...> [--json]
-
-        Options:
-          --rules <set>   en16931 | peppol | xrechnung (default: taken from the invoice)
-          --recursive     descend into subfolders, -r for short
-          --csv <file>    write one row per invoice, with a summary on the console
-          --json          machine-readable output
-          --no-schema     check business rules only, skipping XML Schema
-          --strict        fail an invoice whose declared specification has no rule set
-                          here, instead of judging it against EN 16931 alone
-          --parallel <n>  files validated at once (default: one per core)
-          -o, --out       where to write rendered HTML; stdout for a single invoice
-          --lang          label language for render: de (default) or en
-
-        render produces a self-contained HTML page using the official XRechnung
-        visualisation, so what you show a user matches the reference rendering.
-
-        Run "rules restore" once: it downloads the validation artefacts from their
-        publishers and checks them against the SHA-256 recorded in the manifest.
-        Nothing else in Klarfakt touches the network.
-
-        Files may be UBL or CII XML, or a hybrid Factur-X / ZUGFeRD 2.x PDF. Point it at a
-        folder to see how much of an existing archive would be rejected.
-
-        Exit codes:
-          0   valid
-          1   validation errors
-          2   a file could not be processed
-          64  usage error
-          130 stopped with Ctrl+C before every file was checked
-        """);
-}
+static void Usage() => Console.WriteLine(CommandLine.UsageText);
 
 internal static class ExitCode
 {
@@ -490,6 +464,9 @@ internal static class ExitCode
     internal const int Invalid = 1;
     internal const int Failed = 2;
     internal const int Usage = 64;
+
+    /// <summary>Nothing was asked for that could fail. Help is not a usage error.</summary>
+    internal const int Ok = 0;
 
     /// <summary>The conventional shell code for a run ended by SIGINT.</summary>
     internal const int Cancelled = 130;
