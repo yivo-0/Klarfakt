@@ -6,6 +6,32 @@ Rule pack versions are called out separately from library versions, because a
 pack bump can change the verdict on an invoice that previously passed while the
 library itself is unchanged.
 
+## 1.0.0-preview.2
+
+### Fixed
+
+- **A Peppol CII invoice ended a whole batch run.** Peppol BIS Billing CII
+  Invoice is a registered Peppol document type, so it is ordinary inbound traffic
+  for anyone registered to receive CII — but the pinned KoSIT BIS configuration
+  ships UBL artefacts only. Choosing that rule set from the document and then
+  asking for artefacts that do not exist threw out of `InvoiceValidator.Validate`,
+  and `Parallel.ForEach` re-threw it as an `AggregateException` that no handler
+  caught: a stack trace and exit 127, which is not in the documented exit codes,
+  with every other invoice in the folder unreported. A rule set chosen from the
+  document now falls back to EN 16931, the way any other profile without rules of
+  its own already did. A rule set the caller names explicitly is still refused
+  rather than quietly swapped.
+- `RulePackCatalog.Covers` took no syntax, so that same document reported
+  `ProfileCovered = true` while nothing here could judge it. Coverage now requires
+  artefacts for the document's syntax as well as its identifier.
+- The refusal message claimed "Peppol BIS Billing 3.0 is defined for UBL only".
+  It is not — OpenPEPPOL publishes CII Schematron. What is UBL-only is the pinned
+  configuration Klarfakt runs, and the message says so.
+- `--parallel abc` and `--rules nonsense` exited 2, "a file could not be
+  processed", for what is a mistake in the command line. Both are usage errors,
+  and both exit 64.
+- The `HttpResponseMessage` in `RestoreAsync` was never disposed.
+
 ## 1.0.0-preview.1
 
 First package. Reads, validates and renders EN 16931 invoices with no JVM, no

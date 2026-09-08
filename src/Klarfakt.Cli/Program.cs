@@ -437,22 +437,17 @@ static void WriteAtomically(string target, Action<TextWriter> render)
     }
 }
 
-int? Parallelism()
-{
-    if (!values.TryGetValue("--parallel", out var value)) return null;
-
-    return int.TryParse(value, out var parsed) && parsed > 0
-        ? parsed
-        : throw new RulePackException($"--parallel needs a positive number, not '{value}'.");
-}
+// Both values were checked by CommandLine.Parse, which reports a bad one as a usage error before
+// any of this runs. Throwing from here reached the RulePackException handler instead, and reported
+// a typo in the command line as "a file could not be processed".
+int? Parallelism() => values.TryGetValue("--parallel", out var value) ? int.Parse(value) : null;
 
 RuleSet? RuleSet() => values.TryGetValue("--rules", out var value)
     ? value.ToLowerInvariant() switch
     {
         "en16931" => Klarfakt.Validation.RuleSet.En16931,
         "peppol" => Klarfakt.Validation.RuleSet.PeppolBisBilling3,
-        "xrechnung" => Klarfakt.Validation.RuleSet.XRechnung,
-        _ => throw new RulePackException($"Unknown rule set '{value}'. Use en16931, peppol or xrechnung."),
+        _ => Klarfakt.Validation.RuleSet.XRechnung,
     }
     : null;
 

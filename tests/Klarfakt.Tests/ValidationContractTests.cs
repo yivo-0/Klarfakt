@@ -38,7 +38,7 @@ public class ValidationContractTests(ValidatorFixture fixture)
     [InlineData("urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.3", false)]
     public void Knows_which_declared_specifications_have_rules_of_their_own(string? identifier, bool covered)
     {
-        Assert.Equal(covered, RulePackCatalog.Covers(InvoiceProfile.Parse(identifier)));
+        Assert.Equal(covered, RulePackCatalog.Covers(InvoiceProfile.Parse(identifier), InvoiceSyntax.Ubl));
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class ValidationContractTests(ValidatorFixture fixture)
         })
         {
             Assert.True(
-                RulePackCatalog.Covers(InvoiceProfile.Parse(identifier)),
+                RulePackCatalog.Covers(InvoiceProfile.Parse(identifier), InvoiceSyntax.Ubl),
                 $"a pack is restored whose own identifier Covers rejects: {identifier}");
         }
     }
@@ -92,7 +92,7 @@ public class ValidationContractTests(ValidatorFixture fixture)
             "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0" +
             "#conformant#urn:example:unsupported:1.0");
 
-        Assert.False(RulePackCatalog.Covers(document.Profile));
+        Assert.False(RulePackCatalog.Covers(document.Profile, document.Syntax));
 
         var result = fixture.Validator!.Validate(document, strict: true);
 
@@ -108,7 +108,7 @@ public class ValidationContractTests(ValidatorFixture fixture)
 
         var document = WithProfile("urn:cen.eu:en16931:2017#compliant#urn:fdc:nen.nl:nlcius:v1.0");
 
-        Assert.False(RulePackCatalog.Covers(document.Profile));
+        Assert.False(RulePackCatalog.Covers(document.Profile, document.Syntax));
 
         var result = fixture.Validator!.Validate(document, strict: true);
 
@@ -141,6 +141,40 @@ public class ValidationContractTests(ValidatorFixture fixture)
         var finding = Assert.Single(result.Findings, candidate => candidate.RuleId == InvoiceValidator.ProfileRuleId);
         Assert.Equal(ValidationSeverity.Error, finding.Severity);
         Assert.Contains("urn:some.authority:cius:2029", finding.Message);
+    }
+
+    [Fact]
+    public void Falls_back_for_a_peppol_invoice_in_a_syntax_the_pinned_pack_does_not_carry()
+    {
+        if (!fixture.Available) return;
+
+        // Peppol BIS Billing CII Invoice is a registered Peppol document type, so this is ordinary
+        // inbound traffic for anyone registered for CII. Choosing Peppol from the document and then
+        // asking for artefacts the pinned configuration does not ship threw out of Validate, and
+        // Parallel.ForEach turned that into an AggregateException that killed a whole folder.
+        var document = CiiWithProfile(
+            "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0");
+
+        var result = fixture.Validator!.Validate(document);
+
+        Assert.Equal(RuleSet.En16931, result.RuleSet);
+
+        // And the coverage claim has to move with it. The identifier is one Klarfakt covers in UBL,
+        // so reading the identifier alone reported this document as fully covered while no artefact
+        // for it existed.
+        Assert.False(result.ProfileCovered);
+    }
+
+    [Fact]
+    public void Still_refuses_a_syntax_the_caller_named_rules_for()
+    {
+        if (!fixture.Available) return;
+
+        // Falling back is for a rule set chosen from the document. A caller who names one has said
+        // what this document should be judged against, and judging it against something else
+        // quietly would be worse than saying no.
+        Assert.Throws<RulePackException>(() => fixture.Validator!.Validate(
+            Fixture.Load("facturx-cii.xml"), RuleSet.PeppolBisBilling3));
     }
 
     [Fact]
@@ -187,4 +221,8 @@ public class ValidationContractTests(ValidatorFixture fixture)
             .Replace(
                 "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0",
                 identifier));
+
+    private static InvoiceDocument CiiWithProfile(string identifier) => InvoiceDocument.Parse(
+        File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "facturx-cii.xml"))
+            .Replace("urn:cen.eu:en16931:2017#compliant#urn:factur-x.eu:1p0:basic", identifier));
 }
