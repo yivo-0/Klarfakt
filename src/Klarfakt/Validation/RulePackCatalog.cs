@@ -249,23 +249,18 @@ public sealed class RulePackCatalog
         _ => RuleSet.En16931,
     };
 
-    /// <summary>The profile versions the shipped packs implement, as they appear in an identifier.</summary>
+    /// <summary>
+    /// The profile versions the shipped packs implement, as they appear in an identifier. The
+    /// identifiers below are built from these, so a pack bump that is not reflected here fails
+    /// <c>The_covered_versions_match_the_packs_actually_shipped</c> rather than quietly claiming
+    /// coverage of a version no longer on disk.
+    /// </summary>
     internal const string XRechnungProfileVersion = "3.0";
 
     internal const string PeppolProfileVersion = "3.0";
 
-    /// <summary>
-    /// Whether the specification a document declares has a rule set of its own here. Anything else
-    /// falls back to EN 16931 — a sound verdict on the core rules, and no statement at all about the
-    /// national or sector rules the document says it follows.
-    /// </summary>
-    /// <remarks>
-    /// The kind alone is not enough to answer this. One version of each pack is shipped, so
-    /// <c>xrechnung_99.0</c> is not covered by the 3.0 rules merely because the name matched. And a
-    /// CIUS or extension is declared by suffixing the EN 16931 identifier with <c>#</c> and its own
-    /// URN — NLCIUS and every other national profile look exactly like plain EN 16931 to a check
-    /// that only reads the kind, which is how they used to be reported as fully covered.
-    /// </remarks>
+    internal const string En16931Identifier = "urn:cen.eu:en16931:2017";
+
     /// <summary>
     /// The identifiers the shipped packs implement, exactly as an invoice declares them. The
     /// XRechnung extension is here because the artefact carries its BR-DEX rules; XRechnung 2.x,
@@ -273,20 +268,28 @@ public sealed class RulePackCatalog
     /// </summary>
     private static readonly HashSet<string> CoveredIdentifiers = new(StringComparer.OrdinalIgnoreCase)
     {
-        "urn:cen.eu:en16931:2017",
-        "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
-        "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0",
-        "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" +
-        "#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0",
+        En16931Identifier,
+        $"{En16931Identifier}#compliant#urn:fdc:peppol.eu:2017:poacc:billing:{PeppolProfileVersion}",
+        $"{En16931Identifier}#compliant#urn:xeinkauf.de:kosit:xrechnung_{XRechnungProfileVersion}",
+        $"{En16931Identifier}#compliant#urn:xeinkauf.de:kosit:xrechnung_{XRechnungProfileVersion}" +
+        $"#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_{XRechnungProfileVersion}",
     };
 
+    /// <summary>
+    /// Whether the specification a document declares has a rule set of its own here. Anything else
+    /// falls back to EN 16931 — a sound verdict on the core rules, and no statement at all about the
+    /// national or sector rules the document says it follows.
+    /// </summary>
+    /// <remarks>
+    /// The whole identifier, not a version found somewhere inside it. A CIUS or extension is
+    /// declared by suffixing a base identifier with <c>#</c> and its own URN, so NLCIUS looks like
+    /// plain EN 16931 and anything appended to Peppol 3.0 still contains "3.0" — both of which used
+    /// to report as fully covered while nothing here judged the part that was appended.
+    /// </remarks>
     public static bool Covers(InvoiceProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        // The whole identifier, not a version found somewhere inside it. A document may append its
-        // own CIUS or extension to a supported one, and that suffix is exactly the part no pack
-        // here judges — reading the version out of the middle reported those as fully covered.
         return profile.SpecificationIdentifier is { } identifier
             && CoveredIdentifiers.Contains(identifier.Trim());
     }
