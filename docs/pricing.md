@@ -50,8 +50,10 @@ today, stop renewing in a year, and you keep the right to run everything
 published in that year, in production, indefinitely. What lapses is new versions
 and support, not the software already in your pipeline.
 
-That matters more than usual here, because Klarfakt is maintained by one person.
 You should not have to bet an invoice pipeline on anyone's continued attention.
+What you licensed keeps working whatever happens next, and the Change Date is a
+ceiling that cannot be moved — not a promise that depends on this project still
+being here to keep it.
 
 ### Founding customers
 
