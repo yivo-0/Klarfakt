@@ -82,7 +82,7 @@ them. Written down because they say what the limits are actually worth.
 
 - All 309 CEN rule-test files replayed, every `<success>` and `<error>`
   expectation, proving agreement per rule rather than in aggregate.
-- 100 of 100 comparable files agree rule for rule with KoSIT's validationtool
+- 97 of 97 comparable files agree rule for rule with KoSIT's validationtool
   v1.6.3 on every CI run.
 - 989 tests on net8.0 and net10.0.
 - Four defects found in published upstream examples, documented in the test suite.
