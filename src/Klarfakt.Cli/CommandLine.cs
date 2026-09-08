@@ -104,8 +104,32 @@ internal sealed class CommandLine
             flags.Add(name);
         }
 
-        return new CommandLine(paths, flags, values, null);
+        return new CommandLine(paths, flags, values, Rejects(values));
     }
+
+    /// <summary>
+    /// An option whose value makes no sense is a usage error like any other. These used to be
+    /// checked where they were read and thrown as RulePackException, which the CLI maps to exit 2
+    /// — "a file could not be processed" — for what is a typo in the command line.
+    /// </summary>
+    private static string? Rejects(Dictionary<string, string> values)
+    {
+        if (values.TryGetValue("--rules", out var rules) && RuleSetNames.All(
+                name => !string.Equals(name, rules, StringComparison.OrdinalIgnoreCase)))
+        {
+            return $"Unknown rule set '{rules}'. Use {string.Join(", ", RuleSetNames)}.";
+        }
+
+        if (values.TryGetValue("--parallel", out var parallel)
+            && !(int.TryParse(parallel, out var count) && count > 0))
+        {
+            return $"'--parallel' needs a positive number, not '{parallel}'.";
+        }
+
+        return null;
+    }
+
+    internal static readonly string[] RuleSetNames = ["en16931", "peppol", "xrechnung"];
 
     /// <summary>
     /// A real option aimed at the wrong command is a different mistake from a typo, and worth a
