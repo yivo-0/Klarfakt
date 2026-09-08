@@ -38,6 +38,42 @@ jobs:
       - name: Take the version from the tag
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
+      # This file used to repeat a subset of ci.yml's checks and the two drifted, so the workflow
+      # doing the irreversible thing ended up with the weaker gate. Rather than copy the list a
+      # third time, refuse to publish a commit whose own ci run did not pass — which covers the
+      # reference comparison and the command line smoke tests without duplicating either.
+      #
+      # No check runs at all is a refusal, not a pass: that is the same mistake in a different
+      # costume.
+      - name: Require ci to have passed on this commit
+        run: |
+          for attempt in $(seq 1 40); do
+            states=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" \
+              --jq '.check_runs[] | select(.name != "publish") | "\(.status):\(.conclusion)"')
+
+            if [ -z "$states" ]; then
+              echo "no checks reported for $GITHUB_SHA yet (attempt $attempt)"
+            elif echo "$states" | grep -qv '^completed:'; then
+              echo "waiting for checks to finish (attempt $attempt)"
+            else
+              break
+            fi
+
+            sleep 15
+          done
+
+          echo "$states"
+
+          if [ -z "$states" ]; then
+            echo "::error::No ci run exists for $GITHUB_SHA. Refusing to publish an unchecked commit."
+            exit 1
+          fi
+
+          if echo "$states" | grep -qv '^completed:success$'; then
+            echo "::error::ci did not pass on $GITHUB_SHA. Refusing to publish."
+            exit 1
+          fi
+
       - name: Build
         run: dotnet build --configuration Release -p:Version=$VERSION -warnaserror
 
@@ -47,11 +83,23 @@ jobs:
       - name: Fetch the official test corpora
         run: python tools/fetch-corpus.py
 
+      # KLARFAKT_REQUIRE_CORPUS makes a missing corpus or an unrestored rule pack a failure. Without
+      # it most of the suite returns early and a green run proves nothing — and this is the run that
+      # cannot be taken back. ci.yml has always set it; this file did not.
       - name: Test
+        env:
+          KLARFAKT_REQUIRE_CORPUS: 1
         run: dotnet test --configuration Release --no-build
 
       - name: Pack
         run: dotnet pack --configuration Release --no-build -p:Version=$VERSION --output artifacts
+
+      # Packing is not the same as being usable. Builds and runs samples/Quickstart against the
+      # packed .nupkg from a clean directory with its own package cache, so a file left out of the
+      # package fails here rather than in someone else's first five minutes. Repeated from ci.yml
+      # deliberately: this is the only check whose subject is the exact artefact being pushed.
+      - name: Verify the package from a clean directory
+        run: python tools/verify-package.py
 
       # Trade the OIDC token for an API key valid for one hour. Requested here rather than at the
       # top of the job because the build, restore and test steps above take minutes, and a key
