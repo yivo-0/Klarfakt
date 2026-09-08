@@ -57,7 +57,28 @@ public class ValidationContractTests(ValidatorFixture fixture)
             RulePackCatalog.PeppolProfileVersion,
             fixture.Catalog.Pack("peppol-bis").Version,
             StringComparison.Ordinal);
+
+        // And not merely two constants agreeing with each other. Whatever version is on disk,
+        // Covers has to accept the identifier a document declaring that version would carry —
+        // which is the property the constants exist to protect, and the one that broke when
+        // Covers stopped reading them.
+        foreach (var identifier in new[]
+        {
+            $"{RulePackCatalog.En16931Identifier}#compliant#urn:xeinkauf.de:kosit:xrechnung_" +
+            Profile(fixture.Catalog.Pack("xrechnung").Version),
+            $"{RulePackCatalog.En16931Identifier}#compliant#urn:fdc:peppol.eu:2017:poacc:billing:" +
+            Profile(fixture.Catalog.Pack("peppol-bis").Version),
+        })
+        {
+            Assert.True(
+                RulePackCatalog.Covers(InvoiceProfile.Parse(identifier)),
+                $"a pack is restored whose own identifier Covers rejects: {identifier}");
+        }
     }
+
+    /// <summary>Packs are versioned to the patch; an identifier names the profile's major.minor.</summary>
+    private static string Profile(string packVersion) =>
+        string.Join('.', packVersion.Split('.').Take(2));
 
     [Fact]
     public void Strict_mode_refuses_an_extension_appended_to_a_covered_profile()
