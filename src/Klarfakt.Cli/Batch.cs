@@ -219,11 +219,29 @@ internal static class Batch
         }
     }
 
+    private static readonly char[] Delimiters = [',', '"', '\n', '\r', '\t'];
+
+    /// <summary>
+    /// One CSV field: quoted when it carries a delimiter, and made inert when it opens with a
+    /// character a spreadsheet reads as an expression rather than text.
+    /// </summary>
+    /// <remarks>
+    /// The profile column is the invoice's own cbc:CustomizationID, and the file column can come
+    /// from an archive somebody else named, so both arrive exactly as a sender wrote them. Excel
+    /// and LibreOffice evaluate a field beginning = + - or @, which turns opening the report into
+    /// running what the invoice asked for; quoting does not stop it, because the quotes are gone by
+    /// the time the field is parsed. A leading tab does, and reads as whitespace everywhere else.
+    /// The --json output carries the value untouched for anything reading it programmatically.
+    /// </remarks>
     private static string Escape(string value)
     {
-        if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n')) return value;
+        if (value.Length == 0) return value;
 
-        return '"' + value.Replace("\"", "\"\"") + '"';
+        var field = value[0] is '=' or '+' or '-' or '@' ? '\t' + value : value;
+
+        if (field.IndexOfAny(Delimiters) < 0) return field;
+
+        return '"' + field.Replace("\"", "\"\"") + '"';
     }
 }
 

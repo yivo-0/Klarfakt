@@ -15,14 +15,18 @@ internal sealed class SchemaValidator
 {
     internal const string RuleId = "XSD";
 
-    private readonly ConcurrentDictionary<string, XmlSchemaSet> _sets = new(StringComparer.OrdinalIgnoreCase);
+    // Lazy, not a bare factory: GetOrAdd does not lock, so a cold cache under Parallel.ForEach had
+    // every worker read and compile the whole schema set at once and throw all but one away.
+    private readonly ConcurrentDictionary<string, Lazy<XmlSchemaSet>> _sets =
+        new(StringComparer.OrdinalIgnoreCase);
 
     internal IReadOnlyList<ValidationFinding> Validate(
         XDocument document,
         RulePack schemaPack,
         string artefact)
     {
-        var schemas = _sets.GetOrAdd(schemaPack.Directory, _ => Compile(schemaPack));
+        var schemas = _sets.GetOrAdd(
+            schemaPack.Directory, _ => new Lazy<XmlSchemaSet>(() => Compile(schemaPack))).Value;
         var pack = schemaPack.ToString();
         var findings = new List<ValidationFinding>();
 

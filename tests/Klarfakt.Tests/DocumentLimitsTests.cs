@@ -81,7 +81,9 @@ public class DocumentLimitsTests
                 MaxTotalAttachmentBytes = 12 * 1024 * 1024,
             }));
 
-        Assert.Contains("come to over", exception.Message);
+        // Refused while inflating the attachment that would breach the total, rather than after
+        // allocating it: the message names the document limit, not this one attachment's size.
+        Assert.Contains("total attachment limit", exception.Message);
         Assert.Contains("MaxTotalAttachmentBytes", exception.Message);
     }
 

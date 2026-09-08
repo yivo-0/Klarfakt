@@ -82,7 +82,9 @@ public sealed partial class InvoiceProfile
             return new InvoiceProfile(id, businessProcess, ProfileKind.En16931, "2017", null, isExtension);
         }
 
-        return new InvoiceProfile(id, businessProcess, ProfileKind.Unknown, null, null, false);
+        // isExtension, not false: an extension whose base profile is not one we recognise is still
+        // an extension, and it is the profile we can say least about.
+        return new InvoiceProfile(id, businessProcess, ProfileKind.Unknown, null, null, isExtension);
     }
 
     private static string? HybridVersion(string value) =>

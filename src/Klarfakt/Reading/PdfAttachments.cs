@@ -167,11 +167,26 @@ internal static class PdfAttachments
 
         var files = specification.Elements.GetDictionary("/EF");
         var content = files?.Elements.GetDictionary("/F") ?? files?.Elements.GetDictionary("/UF");
-        var bytes = Content(content, fileName, limits);
+        var bytes = Content(content, fileName, limits, budget);
 
         if (bytes is not { Length: > 0 }) return;
 
         budget.Take(fileName, bytes.LongLength);
+
+        // Two embedded files under one name is a malformed document, and picking one of them is
+        // not ours to do. The name tree is walked before the annotations, so whichever came second
+        // used to win silently: a PDF could carry a clean factur-x.xml where the specification
+        // says it goes and a different one on an annotation, and be judged on the copy that every
+        // conformant reader ignores.
+        if (attachments.TryGetValue(fileName, out var existing))
+        {
+            if (existing.AsSpan().SequenceEqual(bytes)) return;
+
+            throw new UnsupportedDocumentException(
+                $"The PDF embeds two different files named '{fileName}'. Which one is the invoice " +
+                "is not decidable, so it is refused rather than guessed at.");
+        }
+
         attachments[fileName] = bytes;
     }
 
@@ -182,6 +197,8 @@ internal static class PdfAttachments
     private sealed class Budget(DocumentLimits limits)
     {
         private long _taken;
+
+        internal long Remaining => limits.MaxTotalAttachmentBytes - _taken;
 
         internal void Take(string fileName, long bytes)
         {
@@ -206,13 +223,19 @@ internal static class PdfAttachments
     /// array, and a 2.5 MB file reaches the point where .NET refuses the allocation for us. Flate
     /// is inflated here instead, a block at a time, and abandoned the moment it goes over.
     /// </remarks>
-    private static byte[]? Content(PdfDictionary? content, string fileName, DocumentLimits limits)
+    private static byte[]? Content(
+        PdfDictionary? content, string fileName, DocumentLimits limits, Budget budget)
     {
         if (content?.Stream is not { } stream) return null;
 
+        // Whichever ceiling is nearer: on the last attachment of a document the remaining budget is
+        // the real limit, and inflating up to the per-attachment cap first would allocate past the
+        // document total before Take is asked about it.
+        var ceiling = Math.Min(limits.MaxAttachmentBytes, budget.Remaining);
+
         var bytes = IsPlainFlate(content)
-            ? Inflate(stream.Value, fileName, limits)
-            : stream.UnfilteredValue;
+            ? Inflate(stream.Value, fileName, limits, ceiling)
+            : Undecodable(content, fileName);
 
         if (bytes is not null && bytes.LongLength > limits.MaxAttachmentBytes)
         {
@@ -223,38 +246,97 @@ internal static class PdfAttachments
     }
 
     /// <summary>
-    /// Flate with no decode parameters, which is what every hybrid invoice in the corpus uses.
-    /// Anything else — a predictor, a filter chain, an unusual filter — goes through PDFsharp,
-    /// because guessing at it wrongly would lose a readable invoice to save memory.
+    /// Whether the stream is Flate and nothing else, which is what every hybrid invoice in the
+    /// corpus uses.
     /// </summary>
-    private static bool IsPlainFlate(PdfDictionary content) =>
-        content.Elements.GetName("/Filter") == "/FlateDecode" &&
-        !content.Elements.ContainsKey("/DecodeParms") &&
-        !content.Elements.ContainsKey("/DP");
-
-    private static byte[] Inflate(byte[] raw, string fileName, DocumentLimits limits)
+    /// <remarks>
+    /// /Filter may be a name or a one-element array — <c>[/FlateDecode]</c> means exactly
+    /// <c>/FlateDecode</c>, and reading it as a name threw, so an otherwise ordinary invoice was
+    /// rejected as unreadable. /DecodeParms may be absent, null, or a dictionary whose predictor is
+    /// 1, which is "no prediction" and therefore the same bytes. Treating any of those as exotic
+    /// used to move the attachment onto the unbounded path, and the sender writes the dictionary —
+    /// so <c>/DecodeParms &lt;&lt; /Predictor 1 &gt;&gt;</c> was all it took to choose whether the
+    /// size limit applied at all.
+    /// </remarks>
+    private static bool IsPlainFlate(PdfDictionary content)
     {
-        foreach (var zlib in new[] { true, false })
+        if (Single(content.Elements["/Filter"]) is not PdfName { Value: "/FlateDecode" }) return false;
+
+        return Single(content.Elements["/DecodeParms"] ?? content.Elements["/DP"]) switch
         {
-            try
-            {
-                using var source = new MemoryStream(raw);
-                using Stream inflater = zlib
-                    ? new ZLibStream(source, CompressionMode.Decompress)
-                    : new DeflateStream(source, CompressionMode.Decompress);
-
-                return ReadBounded(inflater, fileName, limits);
-            }
-            catch (InvalidDataException) when (zlib)
-            {
-                // A few producers write raw deflate where the specification says zlib.
-            }
-        }
-
-        throw new UnsupportedDocumentException($"The attachment '{fileName}' is not readable Flate data.");
+            null or PdfNull => true,
+            PdfDictionary parameters => parameters.Elements.GetInteger("/Predictor") <= 1,
+            _ => false,
+        };
     }
 
-    private static byte[] ReadBounded(Stream source, string fileName, DocumentLimits limits)
+    /// <summary>
+    /// A stream Klarfakt will not decode itself. With no filter there is nothing to expand and the
+    /// bytes are already bounded by the file on disk. With one, PDFsharp would decompress the whole
+    /// attachment before anyone could measure it, and the sender chooses the filter — so decoding
+    /// it here would hand them the decision of whether the limit applies.
+    /// </summary>
+    private static byte[]? Undecodable(PdfDictionary content, string fileName)
+    {
+        if (Single(content.Elements["/Filter"]) is not { } filter) return content.Stream?.Value;
+
+        throw new UnsupportedDocumentException(
+            $"The attachment '{fileName}' is encoded with {Describe(filter)}, which Klarfakt does " +
+            "not decode. A hybrid invoice embeds its XML uncompressed or with plain FlateDecode.");
+    }
+
+    private static string Describe(PdfItem filter) =>
+        filter is PdfName name ? $"the filter {name.Value}" : "a chain of filters";
+
+    /// <summary>The item itself, or the only element of a one-element array, references resolved.</summary>
+    private static PdfItem? Single(PdfItem? item)
+    {
+        item = (item as PdfReference)?.Value ?? item;
+
+        if (item is not PdfArray array) return item;
+
+        var only = array.Elements.Count == 1 ? array.Elements[0] : null;
+        return (only as PdfReference)?.Value ?? only;
+    }
+
+    private static byte[] Inflate(byte[] raw, string fileName, DocumentLimits limits, long ceiling)
+    {
+        try
+        {
+            return Inflate(raw, zlib: true, fileName, limits, ceiling);
+        }
+        catch (InvalidDataException)
+        {
+            // A few producers write raw deflate where the specification says zlib.
+        }
+
+        try
+        {
+            return Inflate(raw, zlib: false, fileName, limits, ceiling);
+        }
+        // Reported against the attachment. The loop this replaced only filtered the first attempt,
+        // so the second failure escaped to the reader's catch-all and blamed the whole PDF for one
+        // broken stream — and made the message below unreachable.
+        catch (InvalidDataException exception)
+        {
+            throw new UnsupportedDocumentException(
+                $"The attachment '{fileName}' declares Flate compression but is readable as neither " +
+                $"zlib nor raw deflate: {exception.Message}");
+        }
+    }
+
+    private static byte[] Inflate(
+        byte[] raw, bool zlib, string fileName, DocumentLimits limits, long ceiling)
+    {
+        using var source = new MemoryStream(raw);
+        using Stream inflater = zlib
+            ? new ZLibStream(source, CompressionMode.Decompress)
+            : new DeflateStream(source, CompressionMode.Decompress);
+
+        return ReadBounded(inflater, fileName, limits, ceiling);
+    }
+
+    private static byte[] ReadBounded(Stream source, string fileName, DocumentLimits limits, long ceiling)
     {
         using var buffer = new MemoryStream();
         var chunk = new byte[81920];
@@ -262,9 +344,11 @@ internal static class PdfAttachments
 
         while ((read = source.Read(chunk, 0, chunk.Length)) > 0)
         {
-            if (buffer.Length + read > limits.MaxAttachmentBytes)
+            if (buffer.Length + read > ceiling)
             {
-                throw TooLarge(fileName, buffer.Length + read, limits, atLeast: true);
+                throw ceiling < limits.MaxAttachmentBytes
+                    ? OverBudget(fileName, limits)
+                    : TooLarge(fileName, buffer.Length + read, limits, atLeast: true);
             }
 
             buffer.Write(chunk, 0, read);
@@ -272,6 +356,11 @@ internal static class PdfAttachments
 
         return buffer.ToArray();
     }
+
+    private static UnsupportedDocumentException OverBudget(string fileName, DocumentLimits limits) =>
+        new($"'{fileName}' would take the document past the {limits.MaxTotalAttachmentBytes:N0} byte " +
+            "total attachment limit. Raise DocumentLimits.MaxTotalAttachmentBytes if this is " +
+            "genuinely an invoice.");
 
     private static UnsupportedDocumentException TooLarge(
         string fileName, long size, DocumentLimits limits, bool atLeast = false) =>

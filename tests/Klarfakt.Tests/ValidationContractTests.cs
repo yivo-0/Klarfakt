@@ -26,6 +26,16 @@ public class ValidationContractTests(ValidatorFixture fixture)
     // One version of each pack is shipped. A name match is not a rule match.
     [InlineData("urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_99.0", false)]
     [InlineData("urn:fdc:peppol.eu:2017:poacc:billing:4.0", false)]
+    // The XRechnung extension is covered because the shipped artefact carries its BR-DEX rules.
+    [InlineData("urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" +
+                "#conformant#urn:xeinkauf.de:kosit:extension:xrechnung_3.0", true)]
+    // Anything further appended is a specification of its own that nothing here judges. Reading the
+    // version out of the middle of the identifier reported all three of these as fully covered.
+    [InlineData("urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0" +
+                "#conformant#urn:example:unsupported:1.0", false)]
+    [InlineData("urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0" +
+                "#conformant#urn:example:unsupported:1.0", false)]
+    [InlineData("urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_2.3", false)]
     public void Knows_which_declared_specifications_have_rules_of_their_own(string? identifier, bool covered)
     {
         Assert.Equal(covered, RulePackCatalog.Covers(InvoiceProfile.Parse(identifier)));
@@ -47,6 +57,27 @@ public class ValidationContractTests(ValidatorFixture fixture)
             RulePackCatalog.PeppolProfileVersion,
             fixture.Catalog.Pack("peppol-bis").Version,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Strict_mode_refuses_an_extension_appended_to_a_covered_profile()
+    {
+        if (!fixture.Available) return;
+
+        // Peppol 3.0 with something else layered on top. The base is covered, the whole identifier
+        // is not, and reading the version out of the middle returned exit 0 and "valid" under
+        // --strict for a specification no pack here has ever seen.
+        var document = WithProfile(
+            "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0" +
+            "#conformant#urn:example:unsupported:1.0");
+
+        Assert.False(RulePackCatalog.Covers(document.Profile));
+
+        var result = fixture.Validator!.Validate(document, strict: true);
+
+        Assert.False(result.ProfileCovered);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Findings, finding => finding.RuleId == InvoiceValidator.ProfileRuleId);
     }
 
     [Fact]
