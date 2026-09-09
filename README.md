@@ -192,6 +192,17 @@ directory upwards, which is right for a source checkout and a guess anywhere els
 name the directory — `KLARFAKT_RULES`, or `RulePackCatalog.Load(path)` — so a `rules` folder that
 happens to sit above the application is not taken for the artefacts.
 
+One validator for the process is the intended shape, and moving to a new rule pack without a restart
+needs nothing but building another one. A validation artefact is read while it is compiled and not
+consulted again, so a validator keeps working from what it compiled even if the directory beneath it
+is replaced, and releasing the old one is dropping the reference. Deleting the old directory can
+need a second attempt: Saxon leaves a handle on about one compiled stylesheet in twenty, released at
+the next collection rather than at a point either of us chooses.
+
+`InvoiceRenderer` is the exception. The publisher's HTML stylesheet pulls its CSS, its script and its
+label catalogue in with `unparsed-text()`, so the `visualization` pack is read on every page and has
+to stay in place for as long as anything is rendering.
+
 Exit codes: `0` valid, `1` validation errors, `2` a file could not be processed, `64` usage error,
 `130` stopped with Ctrl+C before every file was checked.
 

@@ -13,11 +13,15 @@ public class ArtefactIntegrityTests(ValidatorFixture fixture) : IDisposable
     private readonly string _root = Directory.CreateTempSubdirectory("klarfakt-integrity").FullName;
 
     /// <summary>
-    /// Best effort. A validator keeps the stylesheets it compiled open for as long as it lives, and
-    /// nothing here disposes the Saxon processor, so the copy is sometimes still in use when the
-    /// test ends. Failing the run over a temp directory would be reporting the cleanup, not the
-    /// test — and it did, intermittently, until this caught it.
+    /// Best effort: failing a run over a temp directory would be reporting the cleanup rather than
+    /// the test, and it did, intermittently, until this caught it.
     /// </summary>
+    /// <remarks>
+    /// Not Saxon holding the artefacts, which is what this comment used to claim. A validator does
+    /// not keep the stylesheets open — <see cref="ArtefactLifetimeTests"/> deletes a whole rules
+    /// tree out from under a live one — so whatever occasionally holds a freshly written file here
+    /// is outside this process, and diagnosing it is not worth a red build.
+    /// </remarks>
     public void Dispose()
     {
         try
