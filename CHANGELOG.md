@@ -28,6 +28,17 @@ library itself is unchanged.
 
 ### Changed
 
+- **A document that never claimed EN 16931 is reported as `uncovered`, not
+  `invalid`.** Factur-X MINIMUM and BASIC WL leave the CEN identifier off their
+  specification id because they carry less than the standard requires, so the
+  core rules reported the same seven or so errors on every one of them and
+  failed the archive that contained one. The rules still run and the findings
+  are still reported; what changes is that neither `valid` nor `invalid` is
+  claimed, the run does not fail, and those errors no longer appear in the
+  "most frequent errors" ranking under a line reading "0 with errors".
+  `--strict`, a rule set named with `--rules`, or a schema that does not hold
+  each still produce a verdict. `InvoiceProfile.AssertsEn16931` is the new
+  library-side discriminator.
 - `validate --json` emits camelCase keys (`ruleId`, `findings`), matching
   `info --json`. Anything reading the old PascalCase keys needs updating;
   `tools/reference-diff.py` has been.

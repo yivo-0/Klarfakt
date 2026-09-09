@@ -41,6 +41,22 @@ public sealed partial class InvoiceProfile
 
     public bool IsExtension { get; }
 
+    /// <summary>
+    /// Whether the document claims conformance to EN 16931 at all. A CIUS says so with
+    /// <c>#compliant#</c> and an extension with <c>#conformant#</c>, both built on the CEN
+    /// identifier, so a national profile with no rules here still asserts it.
+    /// </summary>
+    /// <remarks>
+    /// Factur-X MINIMUM and BASIC WL leave the CEN identifier off, and mean it: they carry less
+    /// than the standard requires. Running the core rules over one reports the same few errors
+    /// every time, which says something about the profile rather than about the invoice.
+    /// </remarks>
+    public bool AssertsEn16931 => SpecificationIdentifier?.Trim()
+        .StartsWith(En16931Identifier, StringComparison.OrdinalIgnoreCase) ?? false;
+
+    /// <summary>The identifier every CIUS and extension of the standard is built on.</summary>
+    private const string En16931Identifier = "urn:cen.eu:en16931:2017";
+
     public static InvoiceProfile Parse(string? specificationIdentifier, string? businessProcess = null)
     {
         var id = specificationIdentifier?.Trim();
@@ -77,7 +93,7 @@ public sealed partial class InvoiceProfile
             return new InvoiceProfile(id, businessProcess, ProfileKind.FacturX, HybridVersion(value), HybridLevel(value), isExtension);
         }
 
-        if (value.StartsWith("urn:cen.eu:en16931:2017", StringComparison.Ordinal))
+        if (value.StartsWith(En16931Identifier, StringComparison.Ordinal))
         {
             return new InvoiceProfile(id, businessProcess, ProfileKind.En16931, "2017", null, isExtension);
         }
