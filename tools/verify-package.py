@@ -6,7 +6,7 @@ cache — so a missing dependency, a broken target framework or a file left out 
 up here rather than in someone else's build.
 
     python tools/verify-package.py
-    python tools/verify-package.py --version 1.0.0-preview.1
+    python tools/verify-package.py --version 1.0.0-preview.3
 """
 
 import argparse

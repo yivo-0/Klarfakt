@@ -22,6 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Not continue-on-error. The script exits 1 when a pack is behind, which is news rather than
+      # a broken run — but it also exits 1 when it could not reach upstream at all, and swallowing
+      # that made a green weekly run the expected outcome whether or not anything was checked.
+      # Both cases open an issue, so a red run here is the notification, not a nuisance.
       - name: Check pinned rule packs against upstream
         run: python tools/check-rule-updates.py --issue
-        continue-on-error: true

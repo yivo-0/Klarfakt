@@ -27,6 +27,12 @@ public sealed class InvoiceRenderer
     public InvoiceRenderer(RulePackCatalog? catalog = null) => _catalog = catalog ?? RulePackCatalog.Load();
 
     /// <summary>
+    /// The label catalogues the publisher ships. The value reaches the stylesheet as a
+    /// decimal-format name as well, so anything else fails inside Saxon rather than here.
+    /// </summary>
+    public static IReadOnlyList<string> Languages { get; } = ["de", "en"];
+
+    /// <summary>
     /// Renders the invoice as a standalone HTML document. The publisher ships German and English
     /// label catalogues; <paramref name="language"/> selects between them.
     /// </summary>
@@ -38,10 +44,28 @@ public sealed class InvoiceRenderer
     }
 
     /// <summary>Renders the invoice as HTML into <paramref name="writer"/>.</summary>
+    /// <exception cref="ArgumentException">
+    /// The language is not one the publisher ships labels for. Checked here rather than left to
+    /// the stylesheet, which uses the value as a decimal-format name and fails with nine lines of
+    /// Saxon internals — naming files on the caller's disk — for what is a typo.
+    /// </exception>
     public void ToHtml(InvoiceDocument document, TextWriter writer, string language = "de")
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(writer);
+        ArgumentNullException.ThrowIfNull(language);
+
+        // Lowercased, because the catalogues and the decimal-format names are lowercase and "EN"
+        // is a reasonable thing for a caller to pass.
+        language = language.ToLowerInvariant();
+
+        if (!Languages.Contains(language))
+        {
+            throw new ArgumentException(
+                $"'{language}' is not a language the visualisation ships labels for. " +
+                $"Use {string.Join(" or ", Languages)}.",
+                nameof(language));
+        }
 
         var pack = _catalog.VerifiedPack("visualization");
         var input = _processor.NewDocumentBuilder().Build(document.Xml.CreateReader());

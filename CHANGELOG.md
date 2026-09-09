@@ -6,6 +6,45 @@ Rule pack versions are called out separately from library versions, because a
 pack bump can change the verdict on an invoice that previously passed while the
 library itself is unchanged.
 
+## 1.0.0-preview.3
+
+### Fixed
+
+- **A rule-pack problem still ended a folder run.** Preview.2 stopped a Peppol
+  CII invoice throwing out of `Validate`, but any `RulePackException` raised
+  inside the folder loop — an altered or missing artefact — still left
+  `Parallel.ForEach` as an `AggregateException` that no handler caught: exit 127
+  and a stack trace over two files, where the same problem over one file gave
+  exit 2 and a sentence. The batch now rethrows the worker's own exception, so
+  every file count reaches the same handler.
+- `--lang fr` reached the KoSIT stylesheet untouched, where the value names a
+  decimal-format that exists only for `de` and `en`, and produced nine lines of
+  Saxon internals and exit 2 for a typo. It is a usage error, exit 64, like
+  `--rules` and `--parallel`.
+- The weekly rule-pack check could report every pack current when its release
+  lookup had failed. A pack it could not read is now reported as unknown and the
+  run fails, because the 30-day update commitment rests on that check.
+- `NOTICE` named AngleSharp 1.7.3 while the package pins 1.8.0.
+
+### Changed
+
+- **A document that never claimed EN 16931 is reported as `uncovered`, not
+  `invalid`.** Factur-X MINIMUM and BASIC WL leave the CEN identifier off their
+  specification id because they carry less than the standard requires, so the
+  core rules reported the same seven or so errors on every one of them and
+  failed the archive that contained one. The rules still run and the findings
+  are still reported; what changes is that neither `valid` nor `invalid` is
+  claimed, the run does not fail, and those errors no longer appear in the
+  "most frequent errors" ranking under a line reading "0 with errors".
+  `--strict`, a rule set named with `--rules`, or a schema that does not hold
+  each still produce a verdict. `InvoiceProfile.AssertsEn16931` is the new
+  library-side discriminator.
+- `validate --json` emits camelCase keys (`ruleId`, `findings`), matching
+  `info --json`. Anything reading the old PascalCase keys needs updating;
+  `tools/reference-diff.py` has been.
+- `InvoiceRenderer.ToHtml` throws `ArgumentException` for a language the
+  visualisation ships no labels for, rather than failing inside Saxon.
+
 ## 1.0.0-preview.2
 
 ### Fixed

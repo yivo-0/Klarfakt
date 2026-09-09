@@ -19,7 +19,7 @@ PDFsharp 6.2.4 — empira Software GmbH, Germany
   PDFsharp brings these in transitively; Klarfakt does not call them directly,
   and references them only to pin patched versions:
 
-  AngleSharp 1.7.3 — AngleSharp project
+  AngleSharp 1.8.0 — AngleSharp project
     MIT License
     https://github.com/AngleSharp/AngleSharp
 

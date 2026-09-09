@@ -12,8 +12,8 @@ When a verdict here disagrees with KoSIT's, that is a bug in Klarfakt — and th
 replayed test by test to keep it that way.
 
 ```bash
-dotnet add package Klarfakt --version 1.0.0-preview.1
-dotnet tool install -g Klarfakt.Cli --version 1.0.0-preview.1
+dotnet add package Klarfakt --version 1.0.0-preview.3
+dotnet tool install -g Klarfakt.Cli --version 1.0.0-preview.3
 klarfakt rules restore
 ```
 
@@ -154,6 +154,17 @@ A document declaring a specification Klarfakt has no rules for — a national CI
 or Factur-X's own profile rules — is judged against EN 16931 and says so. `--strict` turns that into
 a failure instead.
 
+A document that never claimed EN 16931 is a different case again. Factur-X **MINIMUM** and
+**BASIC WL** leave the CEN identifier off their specification id deliberately, because they carry
+less than the standard requires, so the core rules report the same handful of errors on every one of
+them. Those files come back **`uncovered`** rather than `invalid`, and do not fail the run: the
+rules ran and the findings are reported, but the verdict would describe the profile rather than the
+invoice. `--strict` makes them fail. German tax guidance excludes both profiles from counting as an
+e-invoice at all ([UStAE 14.1 Abs. 14][bmf]), so a receiving pipeline usually wants to route them
+rather than validate them.
+
+[bmf]: https://www.bundesfinanzministerium.de/Content/DE/FAQ/e-rechnung.html
+
 Validating a hybrid PDF validates **the XML inside it**. Klarfakt says nothing about whether the
 PDF itself conforms to PDF/A-3 or carries the XMP metadata Factur-X requires.
 
@@ -175,7 +186,25 @@ var document = InvoiceDocument.Load(stream, new DocumentLimits { MaxBytes = 8 * 
 `Validate` takes a `CancellationToken`, observed before the schema and between rule layers. That is
 every point there is: a Saxon transform, once started, runs to completion, so cancellation is prompt
 across a batch and coarse within one large document.
-Exit codes: `0` valid, `1` validation errors, `2` a file could not be processed, `64` usage error.
+
+`RulePackCatalog.Load()` with no argument looks for a `rules` directory from the application's own
+directory upwards, which is right for a source checkout and a guess anywhere else. In a deployment,
+name the directory — `KLARFAKT_RULES`, or `RulePackCatalog.Load(path)` — so a `rules` folder that
+happens to sit above the application is not taken for the artefacts.
+
+One validator for the process is the intended shape, and moving to a new rule pack without a restart
+needs nothing but building another one. A validation artefact is read while it is compiled and not
+consulted again, so a validator keeps working from what it compiled even if the directory beneath it
+is replaced, and releasing the old one is dropping the reference. Deleting the old directory can
+need a second attempt: Saxon leaves a handle on about one compiled stylesheet in twenty, released at
+the next collection rather than at a point either of us chooses.
+
+`InvoiceRenderer` is the exception. The publisher's HTML stylesheet pulls its CSS, its script and its
+label catalogue in with `unparsed-text()`, so the `visualization` pack is read on every page and has
+to stay in place for as long as anything is rendering.
+
+Exit codes: `0` valid, `1` validation errors, `2` a file could not be processed, `64` usage error,
+`130` stopped with Ctrl+C before every file was checked.
 
 ## Verified against
 

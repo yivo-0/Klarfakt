@@ -76,6 +76,20 @@ public class BatchTests : IDisposable
     }
 
     [Fact]
+    public void Reports_a_rule_pack_problem_from_a_folder_run_as_itself()
+    {
+        var validator = new InvoiceValidator(RulePackCatalog.Load(Path.Combine(_root, "no-rules")));
+        var fixtures = Path.Combine(AppContext.BaseDirectory, "Fixtures");
+        var files = new List<InvoiceFile>
+        {
+            new(Path.Combine(fixtures, "xrechnung-ubl.xml"), "xrechnung-ubl.xml"),
+            new(Path.Combine(fixtures, "facturx-cii.xml"), "facturx-cii.xml"),
+        };
+
+        Assert.Throws<RulePackException>(() => Batch.Run(validator, files, null, validateSchema: true));
+    }
+
+    [Fact]
     public void Writes_a_csv_row_per_invoice()
     {
         var reports = new List<Report>
@@ -187,7 +201,7 @@ public class BatchTests : IDisposable
         Batch.WriteSummary(writer, reports);
         var summary = writer.ToString();
 
-        Assert.Contains("5 file(s): 1 valid, 3 with errors, 1 unreadable", summary);
+        Assert.Contains("5 file(s): 1 valid, 3 with errors, 0 not judged, 1 unreadable", summary);
         Assert.Contains("BR-CO-15", summary);
         Assert.Matches(@"BR-CO-15\s+2 file", summary);
         Assert.Matches(@"BR-DE-15\s+1 file", summary);
