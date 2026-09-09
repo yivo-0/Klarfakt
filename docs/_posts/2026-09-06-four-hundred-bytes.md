@@ -170,12 +170,34 @@ Both bomb files now stop at 33.5 MB. They also finish *faster* than before —
 1.2 seconds instead of 5.5 — because nothing large is ever materialised. That is
 usually a sign the earlier version was doing something silly.
 
-One caveat I left in deliberately: this path only handles plain Flate with no
-decode parameters, which is what every hybrid invoice in my test corpus uses.
-Anything more exotic — a predictor, a chain of filters — still goes through
-PDFsharp with the check afterwards. Guessing wrong about an unusual filter would
-mean failing to read a legitimate invoice in order to save memory, and that is
-the wrong trade for a compliance tool.
+## The caveat that was not a caveat
+
+I left one thing in and called it a deliberate trade-off. The bounded path only
+handled plain Flate with *no decode parameters*; anything more exotic — a
+predictor, a chain of filters — still went through PDFsharp with the check
+afterwards. Refusing an unusual filter, I reasoned, would mean losing a readable
+invoice in order to save memory, and that is the wrong trade for a compliance
+tool.
+
+Someone reviewing the code pointed out what I had actually written.
+
+```
+/DecodeParms << /Predictor 1 >>
+```
+
+Predictor 1 means *no prediction*. The bytes are ordinary Flate. Adding that
+dictionary changes nothing whatsoever about the data and everything about which
+code path reads it — and the sender writes the dictionary. So the sender decides
+whether the size limit applies.
+
+Measured against the old code: a 64 MB payload, against a **1 KB** limit,
+allocated 134,568,904 bytes.
+
+Predictor 1 and an explicit null are recognised as plain Flate now, and a filter
+the library will not decode is refused rather than expanded. With no filter at
+all there is nothing to expand, so an uncompressed attachment still reads.
+
+The trade I thought I was making was not the trade I was making.
 
 ## What I took from it
 
@@ -194,13 +216,19 @@ every case the shape you are relying on is a convention the sender can decline t
 follow. My name-tree walker was correct for every file produced by software that
 wasn't trying to hurt me.
 
-**Test the guard, not the happy path.** Both of these were found by sitting down
+**A limit the sender can route around is not a limit either.** This is the first
+lesson again, which is why it stings. I moved the check before the allocation,
+called it fixed, and left a second door open by letting the document's own
+metadata choose which code path did the measuring. The question is not only
+whether something is checked. It is who decides whether the check runs.
+
+**Test the guard, not the happy path.** All of these were found by sitting down
 and writing files specifically designed to break my own code: a self-referencing
-node, a two-node cycle, a node that is its own grandchild, a 6,000-node chain, and
-two compression bombs. All of them are in the test suite now. None of them would
-have appeared in any corpus of real invoices, which is exactly why 521 files of
-real corpus told me nothing about either bug.
+node, a two-node cycle, a node that is its own grandchild, a 6,000-node chain,
+two compression bombs, and a bomb wearing a no-op predictor. All of them are in
+the test suite now. None would have appeared in any corpus of real invoices,
+which is exactly why 518 files of real corpus told me nothing about any of them.
 
 The library is [Klarfakt](https://github.com/yivo-0/Klarfakt), if you want to
-see the fixes in context. But the two mistakes are not specific to PDFs or to
+see the fixes in context. But none of these mistakes are specific to PDFs or to
 e-invoicing, which is why I wrote this instead of a release note.
