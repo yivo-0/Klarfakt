@@ -469,9 +469,13 @@ internal static class ExitCode
 
 internal static class JsonDefaults
 {
+    // camelCase for every command. validate serialised its records as written, so its JSON carried
+    // "RuleId" while info's carried "issueDate", and a script written against one could not read
+    // the other.
     internal static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 }

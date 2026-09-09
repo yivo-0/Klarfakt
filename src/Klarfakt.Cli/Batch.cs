@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using Klarfakt;
 using Klarfakt.Validation;
@@ -80,6 +81,14 @@ internal static class Batch
             {
                 // Keep what finished. The caller reports the run as incomplete from the token, so a
                 // cancelled run cannot be mistaken for a clean archive.
+            }
+            catch (AggregateException exception)
+            {
+                // Parallel.ForEach wraps whatever a worker threw. Validate keeps a file's own
+                // problems as a row, so what escapes is a problem with the run — a missing or
+                // altered artefact — and wrapped, it reached no handler: exit 127 and a stack trace
+                // over two files where one file gave exit 2 and a sentence. Rethrown as itself.
+                ExceptionDispatchInfo.Throw(exception.Flatten().InnerExceptions.FirstOrDefault() ?? exception);
             }
         }
         else

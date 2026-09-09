@@ -12,8 +12,8 @@ When a verdict here disagrees with KoSIT's, that is a bug in Klarfakt — and th
 replayed test by test to keep it that way.
 
 ```bash
-dotnet add package Klarfakt --version 1.0.0-preview.1
-dotnet tool install -g Klarfakt.Cli --version 1.0.0-preview.1
+dotnet add package Klarfakt --version 1.0.0-preview.2
+dotnet tool install -g Klarfakt.Cli --version 1.0.0-preview.2
 klarfakt rules restore
 ```
 
@@ -175,7 +175,14 @@ var document = InvoiceDocument.Load(stream, new DocumentLimits { MaxBytes = 8 * 
 `Validate` takes a `CancellationToken`, observed before the schema and between rule layers. That is
 every point there is: a Saxon transform, once started, runs to completion, so cancellation is prompt
 across a batch and coarse within one large document.
-Exit codes: `0` valid, `1` validation errors, `2` a file could not be processed, `64` usage error.
+
+`RulePackCatalog.Load()` with no argument looks for a `rules` directory from the application's own
+directory upwards, which is right for a source checkout and a guess anywhere else. In a deployment,
+name the directory — `KLARFAKT_RULES`, or `RulePackCatalog.Load(path)` — so a `rules` folder that
+happens to sit above the application is not taken for the artefacts.
+
+Exit codes: `0` valid, `1` validation errors, `2` a file could not be processed, `64` usage error,
+`130` stopped with Ctrl+C before every file was checked.
 
 ## Verified against
 
