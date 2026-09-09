@@ -6,7 +6,7 @@ Rule pack versions are called out separately from library versions, because a
 pack bump can change the verdict on an invoice that previously passed while the
 library itself is unchanged.
 
-## Unreleased
+## 1.0.0-preview.3
 
 ### Fixed
 

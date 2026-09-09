@@ -14,7 +14,7 @@
 # The feed context is only needed while the package is unpublished. Once it is on nuget.org, point
 # it at any empty directory, or delete both /feed lines and the --source flag.
 
-ARG VERSION=1.0.0-preview.2
+ARG VERSION=1.0.0-preview.3
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG VERSION

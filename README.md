@@ -12,8 +12,8 @@ When a verdict here disagrees with KoSIT's, that is a bug in Klarfakt — and th
 replayed test by test to keep it that way.
 
 ```bash
-dotnet add package Klarfakt --version 1.0.0-preview.2
-dotnet tool install -g Klarfakt.Cli --version 1.0.0-preview.2
+dotnet add package Klarfakt --version 1.0.0-preview.3
+dotnet tool install -g Klarfakt.Cli --version 1.0.0-preview.3
 klarfakt rules restore
 ```
 
