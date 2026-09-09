@@ -245,9 +245,9 @@ def klarfakt_verdicts(corpora):
         sys.exit("klarfakt produced no output")
 
     return {
-        key(report["File"]): (
-            report["Status"],
-            {finding["RuleId"] for finding in report["Findings"] if finding["Severity"] == "Error"},
+        key(report["file"]): (
+            report["status"],
+            {finding["ruleId"] for finding in report["findings"] if finding["severity"] == "Error"},
         )
         for report in json.loads(result.stdout)
     }

@@ -227,7 +227,7 @@ and writing files specifically designed to break my own code: a self-referencing
 node, a two-node cycle, a node that is its own grandchild, a 6,000-node chain,
 two compression bombs, and a bomb wearing a no-op predictor. All of them are in
 the test suite now. None would have appeared in any corpus of real invoices,
-which is exactly why 518 files of real corpus told me nothing about any of them.
+which is exactly why 521 files of real corpus told me nothing about any of them.
 
 The library is [Klarfakt](https://github.com/yivo-0/Klarfakt), if you want to
 see the fixes in context. But none of these mistakes are specific to PDFs or to
