@@ -1,0 +1,37 @@
+---
+rule: BR-CL-13
+severity: error
+packs: [cen-en16931 1.3.16, peppol-bis 3.0.21, xrechnung 3.0.2]
+business_terms: []
+corpus_hits: 1
+# Flip to true once the sections below are written.
+published: false
+---
+
+# BR-CL-13
+
+## EN16931-CII-validation.xslt
+
+> Item classification identifier identification scheme identifier MUST be coded using one of the UNTDID 7143 list.
+
+```xpath
+((not(contains(normalize-space(@listID), ' ')) and contains(' AA AB AC AD AE AF AG AH AI AJ AK AL AM AN AO AP AQ AR AS AT AU AV AW AX AY AZ BA BB BC BD BE BF BG BH BI BJ BK BL BM BN BO BP BQ BR BS BT BU BV BW BX BY BZ CC CG CL CR CV DR DW EC EF EMD EN FS GB GN GMN GS HS IB IN IS IT IZ MA MF MN MP NB ON PD PL PO PPI PV QS RC RN RU RY SA SG SK SN SRS SRT SRU SRV SRW SRX SRY SRZ SS SSA SSB SSC SSD SSE SSF SSG SSH SSI SSJ SSK SSL SSM SSN SSO SSP SSQ SSR SSS SST SSU SSV SSW SSX SSY SSZ ST STA STB STC STD STE STF STG STH STI STJ STK STL STM STN STO STP STQ STR STS STT STU STV STW STX STY STZ SUA SUB SUC SUD SUE SUF SUG SUH SUI SUJ SUK SUL SUM TG TSN TSO TSP TSQ TSR TSS TST TSU UA UP VN VP VS VX ZZZ ', concat(' ', normalize-space(@listID), ' '))))
+```
+
+Shipped in cen-en16931 1.3.16, peppol-bis 3.0.21, xrechnung 3.0.2.
+
+Fired on 1 file(s) of the verification corpus, for example `mustang/UBL-CreditNote-2.1-Example.ubl.xml`.
+
+<!-- Written by hand below this line. tools/rule-pages.py never touches it. -->
+
+## What it means
+
+TODO
+
+## Why it fires
+
+TODO
+
+## How to fix it
+
+TODO
