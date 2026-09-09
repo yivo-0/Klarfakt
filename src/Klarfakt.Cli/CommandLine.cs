@@ -218,7 +218,8 @@ internal sealed class CommandLine
           --json          machine-readable output
           --no-schema     check business rules only, skipping XML Schema
           --strict        fail an invoice whose declared specification has no rule set
-                          here, instead of judging it against EN 16931 alone
+                          here, instead of judging it against EN 16931 alone or
+                          reporting it as uncovered
           --parallel <n>  files validated at once (default: one per core)
           -o, --out       where to write rendered HTML; stdout for a single invoice
           --lang          label language for render: de (default) or en
@@ -235,6 +236,11 @@ internal sealed class CommandLine
 
         Files may be UBL or CII XML, or a hybrid Factur-X / ZUGFeRD 2.x PDF. Point it at a
         folder to see how much of an existing archive would be rejected.
+
+        A file is reported valid, invalid, uncovered or error. "uncovered" means the
+        document declares a specification that does not claim EN 16931 conformance —
+        Factur-X MINIMUM and BASIC WL — so the core rules ran but their verdict would
+        describe the profile rather than the invoice. It does not fail the run.
 
         Exit codes:
           0   valid

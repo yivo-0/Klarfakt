@@ -201,7 +201,7 @@ public class BatchTests : IDisposable
         Batch.WriteSummary(writer, reports);
         var summary = writer.ToString();
 
-        Assert.Contains("5 file(s): 1 valid, 3 with errors, 1 unreadable", summary);
+        Assert.Contains("5 file(s): 1 valid, 3 with errors, 0 not judged, 1 unreadable", summary);
         Assert.Contains("BR-CO-15", summary);
         Assert.Matches(@"BR-CO-15\s+2 file", summary);
         Assert.Matches(@"BR-DE-15\s+1 file", summary);

@@ -154,6 +154,17 @@ A document declaring a specification Klarfakt has no rules for — a national CI
 or Factur-X's own profile rules — is judged against EN 16931 and says so. `--strict` turns that into
 a failure instead.
 
+A document that never claimed EN 16931 is a different case again. Factur-X **MINIMUM** and
+**BASIC WL** leave the CEN identifier off their specification id deliberately, because they carry
+less than the standard requires, so the core rules report the same handful of errors on every one of
+them. Those files come back **`uncovered`** rather than `invalid`, and do not fail the run: the
+rules ran and the findings are reported, but the verdict would describe the profile rather than the
+invoice. `--strict` makes them fail. German tax guidance excludes both profiles from counting as an
+e-invoice at all ([UStAE 14.1 Abs. 14][bmf]), so a receiving pipeline usually wants to route them
+rather than validate them.
+
+[bmf]: https://www.bundesfinanzministerium.de/Content/DE/FAQ/e-rechnung.html
+
 Validating a hybrid PDF validates **the XML inside it**. Klarfakt says nothing about whether the
 PDF itself conforms to PDF/A-3 or carries the XMP metadata Factur-X requires.
 

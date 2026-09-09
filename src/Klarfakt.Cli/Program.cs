@@ -185,6 +185,9 @@ int Validate()
 
     if (reports.Any(report => report.Status == "error")) return ExitCode.Failed;
 
+    // "uncovered" is not a failure. The run reached no verdict on those documents rather than a bad
+    // one, and failing an archive because it contains a Factur-X MINIMUM invoice is the behaviour
+    // this replaced. --strict is the flag that turns an unjudged document into an error.
     return reports.Any(report => report.Status == "invalid") ? ExitCode.Invalid : ExitCode.Valid;
 }
 
@@ -374,7 +377,12 @@ static void PrintText(Report report, bool showFile)
         Console.WriteLine("  XML Schema not checked");
     }
 
-    if (!report.ProfileCovered)
+    if (report.Status == "uncovered")
+    {
+        Console.WriteLine($"  profile '{report.Profile ?? "(none declared)"}' does not claim EN 16931 " +
+                          "conformance; the findings below are the core rules run anyway, not a verdict");
+    }
+    else if (!report.ProfileCovered)
     {
         Console.WriteLine($"  profile '{report.Profile ?? "(none declared)"}' has no rule set here; " +
                           "judged against EN 16931 alone");
@@ -391,7 +399,10 @@ static void PrintText(Report report, bool showFile)
 
     var errors = report.Findings.Count(finding => finding.Severity == nameof(ValidationSeverity.Error));
     var warnings = report.Findings.Count(finding => finding.Severity == nameof(ValidationSeverity.Warning));
-    Console.WriteLine($"  {report.Status} against {report.RuleSet} — {errors} error(s), {warnings} warning(s)");
+
+    Console.WriteLine(report.Status == "uncovered"
+        ? $"  not judged — {errors} EN 16931 error(s), {warnings} warning(s)"
+        : $"  {report.Status} against {report.RuleSet} — {errors} error(s), {warnings} warning(s)");
 }
 
 static int Unknown(string command)

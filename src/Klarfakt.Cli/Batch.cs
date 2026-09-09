@@ -120,7 +120,7 @@ internal static class Batch
 
             return new Report(
                 file,
-                result.IsValid ? "valid" : "invalid",
+                Status(document, result, ruleSet, strict),
                 result.RuleSet.ToString(),
                 result.SchemaChecked,
                 result.SchemaValid,
@@ -138,6 +138,30 @@ internal static class Batch
         {
             return new Report(file, "error", null, false, false, false, null, null, [], exception.Message);
         }
+    }
+
+    /// <summary>
+    /// A document that never claimed EN 16931 cannot be judged against it. Factur-X MINIMUM and
+    /// BASIC WL say so by leaving the CEN identifier off, and the core rules then report the same
+    /// few errors on every one of them — a statement about the profile, not about the invoice, and
+    /// one that used to fail a whole archive. Neither "valid" nor "invalid" is true of such a file,
+    /// so the run says so instead of picking one.
+    /// </summary>
+    /// <remarks>
+    /// A rule set the caller named, a schema that did not hold, or strict mode each mean the
+    /// verdict was asked for and stands: the first is a decision about what to judge the document
+    /// against, the second is a structural defect that owes nothing to the profile, and the third
+    /// exists precisely to turn this case into a failure.
+    /// </remarks>
+    private static string Status(
+        InvoiceDocument document, ValidationResult result, RuleSet? ruleSet, bool strict)
+    {
+        if (ruleSet is null && !strict && result.SchemaValid && !document.Profile.AssertsEn16931)
+        {
+            return "uncovered";
+        }
+
+        return result.IsValid ? "valid" : "invalid";
     }
 
     internal static void WriteCsv(TextWriter writer, IEnumerable<Report> reports)
@@ -184,21 +208,34 @@ internal static class Batch
 
         var valid = reports.Count(report => report.Status == "valid");
         var invalid = reports.Count(report => report.Status == "invalid");
+        var notJudged = reports.Count(report => report.Status == "uncovered");
         var unreadable = reports.Count(report => report.Status == "error");
         var schemaFailures = reports.Count(report => report.Status != "error" && !report.SchemaValid);
 
         writer.WriteLine();
-        writer.WriteLine($"{reports.Count} file(s): {valid} valid, {invalid} with errors, {unreadable} unreadable");
+        writer.WriteLine($"{reports.Count} file(s): {valid} valid, {invalid} with errors, " +
+                         $"{notJudged} not judged, {unreadable} unreadable");
 
         if (schemaFailures > 0)
         {
             writer.WriteLine($"{schemaFailures} did not conform to their XML Schema, so business rules were not run.");
         }
 
-        var uncovered = reports.Count(report => report.Status != "error" && !report.ProfileCovered);
-        if (uncovered > 0)
+        if (notJudged > 0)
         {
-            writer.WriteLine($"{uncovered} declared a specification with no rule set here and were judged " +
+            writer.WriteLine($"{notJudged} declared a specification that does not claim EN 16931 conformance — " +
+                             "Factur-X MINIMUM and BASIC WL are the usual ones — so no verdict was reached. " +
+                             "Use --strict to treat that as a failure.");
+        }
+
+        // Counted apart from the line above, which has already accounted for them: a document that
+        // never claimed EN 16931 has no rule set here either, and reporting it twice reads as two
+        // separate problems with the same file.
+        var fellBack = reports.Count(report =>
+            report.Status is not ("error" or "uncovered") && !report.ProfileCovered);
+        if (fellBack > 0)
+        {
+            writer.WriteLine($"{fellBack} declared a specification with no rule set here and were judged " +
                              "against EN 16931 alone. Use --strict to treat that as a failure.");
         }
 
@@ -207,7 +244,11 @@ internal static class Batch
             writer.WriteLine("XML Schema was not checked, so \"valid\" covers the business rules only.");
         }
 
+        // What an access point would reject, and why — so a file nothing reached a verdict on has
+        // no place in it. Its errors are the ones EN 16931 reports on every document of that
+        // profile, and ranking them put ten rules under a line reading "0 with errors".
         var byRule = reports
+            .Where(report => report.Status != "uncovered")
             .SelectMany(report => report.Findings
                 .Where(finding => finding.Severity == nameof(ValidationSeverity.Error))
                 .Select(finding => finding.RuleId)
