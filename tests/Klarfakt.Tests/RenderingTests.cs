@@ -103,4 +103,33 @@ public class RenderingTests
             return null;
         }
     }
+
+    [Theory]
+    [InlineData("fr")]
+    [InlineData("")]
+    [InlineData("de-DE")]
+    public void Refuses_a_language_the_visualisation_has_no_labels_for(string language)
+    {
+        if (Renderer is null) return;
+
+        // Left to the stylesheet this produced nine lines of Saxon internals naming files on the
+        // caller's disk, because the value is used as a decimal-format name.
+        var exception = Assert.Throws<ArgumentException>(
+            () => Renderer.ToHtml(Fixture.Load("xrechnung-ubl.xml"), language));
+
+        Assert.Contains("not a language the visualisation ships labels for", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("de")]
+    [InlineData("EN")]
+    [InlineData("En")]
+    public void Takes_a_language_in_any_casing(string language)
+    {
+        if (Renderer is null) return;
+
+        var html = Renderer.ToHtml(Fixture.Load("xrechnung-ubl.xml"), language);
+
+        Assert.Contains("<html", html, StringComparison.OrdinalIgnoreCase);
+    }
 }

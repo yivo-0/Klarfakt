@@ -126,6 +126,17 @@ internal sealed class CommandLine
             return $"'--parallel' needs a positive number, not '{parallel}'.";
         }
 
+        // The third value option, and the one the sweep that added the other two missed. --lang
+        // reached the KoSIT stylesheet untouched, where it names a decimal-format that only exists
+        // for de and en — so "--lang fr" produced nine lines of Saxon internals, complete with
+        // local file paths, and exit 2 for a typo. Over a folder, once per invoice.
+        if (values.TryGetValue("--lang", out var language) && Klarfakt.Rendering.InvoiceRenderer.Languages.All(
+                known => !string.Equals(known, language, StringComparison.OrdinalIgnoreCase)))
+        {
+            return $"Unknown language '{language}'. Use " +
+                   $"{string.Join(", ", Klarfakt.Rendering.InvoiceRenderer.Languages)}.";
+        }
+
         return null;
     }
 
