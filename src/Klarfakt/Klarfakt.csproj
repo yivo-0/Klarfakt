@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="PDFsharp" Version="6.2.4" />
+    <PackageReference Include="PDFsharp" Version="6.5.0" />
     <PackageReference Include="SaxonCS-HE" Version="13.0.0" />
   </ItemGroup>
 
